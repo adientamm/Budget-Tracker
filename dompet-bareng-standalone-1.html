@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dompet Bareng — Buku Kas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #EFE6D2;
+    --paper-card: #FBF6EA;
+    --ink: #24304A;
+    --ink-soft: #5B6B85;
+    --rule-blue: #B9CADA;
+    --margin-red: #B8433D;
+    --gold: #A9812F;
+    --gold-dark: #8C6A1F;
+    --green: #3F7657;
+    --red: #B8433D;
+    --shadow: rgba(36,48,74,0.15);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse at top left, rgba(169,129,47,0.06), transparent 55%),
+      var(--paper);
+    color:var(--ink);
+    font-family:'Space Grotesk', sans-serif;
+    min-height:100vh;
+    padding-bottom:60px;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+
+  header{ padding:28px 20px 18px; max-width:880px; margin:0 auto; position:relative; }
+  .stamp{
+    position:absolute; top:22px; right:20px;
+    border:2.5px solid var(--gold); color:var(--gold-dark);
+    border-radius:50%; width:72px;height:72px;
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    font-size:9px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;
+    transform:rotate(-8deg); opacity:0.85; line-height:1.2;
+  }
+  h1{ font-size:32px; font-weight:700; margin:0 0 4px; letter-spacing:-0.5px; }
+  .subtitle{ color:var(--ink-soft); font-size:14px; margin:0; }
+  .ledger-no{ font-size:11px; color:var(--ink-soft); margin-top:6px; letter-spacing:1px; }
+
+  nav.tabs{
+    max-width:880px; margin:0 auto; padding:0 20px; display:flex; gap:4px;
+    border-bottom:2px solid var(--ink); overflow-x:auto;
+  }
+  nav.tabs button{
+    background:none; border:none; font-family:'Space Grotesk',sans-serif;
+    font-size:14px; font-weight:600; color:var(--ink-soft); padding:10px 16px;
+    cursor:pointer; border-radius:8px 8px 0 0; white-space:nowrap; transition:all .15s ease;
+  }
+  nav.tabs button.active{ color:var(--ink); background:var(--paper-card); box-shadow:0 -2px 0 var(--gold) inset; }
+  nav.tabs button:hover:not(.active){ color:var(--ink); }
+
+  main{ max-width:880px; margin:0 auto; padding:22px 20px 40px; }
+
+  .ledger-sheet{
+    background:var(--paper-card); border-radius:6px;
+    box-shadow:0 6px 18px var(--shadow), 0 1px 0 rgba(255,255,255,0.4) inset;
+    position:relative; padding:20px 20px 20px 44px; margin-bottom:22px;
+    background-image: linear-gradient(var(--rule-blue) 1px, transparent 1px);
+    background-size: 100% 30px; background-position: 0 54px;
+  }
+  .ledger-sheet::before{
+    content:""; position:absolute; left:26px; top:0; bottom:0; width:1.5px;
+    background:var(--margin-red); opacity:0.55;
+  }
+  .ledger-sheet h2{
+    font-size:13px; text-transform:uppercase; letter-spacing:1.5px; color:var(--ink-soft);
+    margin:0 0 14px; font-weight:600;
+  }
+
+  .total-box{ text-align:left; margin-bottom:6px; }
+  .total-label{ font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:1px;}
+  .total-amount{ font-size:40px; font-weight:700; margin-top:2px; }
+  .total-amount.negative{ color:var(--red); }
+
+  .quick-stats{ display:flex; gap:22px; margin-top:14px; flex-wrap:wrap; }
+  .quick-stat{ font-size:13px; }
+  .quick-stat .val{ font-weight:600; }
+  .val.income{ color:var(--green); }
+  .val.expense{ color:var(--red); }
+
+  .wallet-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(190px,1fr)); gap:14px; }
+  .wallet-card{
+    background:var(--paper-card); border:1px solid rgba(36,48,74,0.12); border-radius:10px;
+    padding:16px; position:relative; box-shadow:0 3px 10px var(--shadow);
+  }
+  .wallet-card::before{
+    content:""; position:absolute; top:0; left:14px; right:14px; height:0;
+    border-top:2px dashed rgba(36,48,74,0.18);
+  }
+  .wallet-badge{
+    width:34px;height:34px; border-radius:50%; border:2px solid var(--gold); color:var(--gold-dark);
+    display:flex;align-items:center;justify-content:center; font-weight:700; font-size:14px; margin-bottom:10px;
+  }
+  .wallet-name{ font-weight:600; font-size:15px; margin-bottom:2px;}
+  .wallet-type{ font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;}
+  .wallet-balance{ font-size:19px; font-weight:700; }
+  .wallet-actions{ margin-top:10px; display:flex; gap:8px; }
+
+  .cat-row{ padding:12px 0; border-bottom:1px solid rgba(36,48,74,0.10); }
+  .cat-row:last-child{ border-bottom:none; }
+  .cat-top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; flex-wrap:wrap; gap:4px; }
+  .cat-name{ font-weight:600; font-size:14px; }
+  .cat-figures{ font-size:12.5px; color:var(--ink-soft); }
+  .cat-figures b{ color:var(--ink); }
+  .bar-track{ height:9px; background:rgba(36,48,74,0.08); border-radius:5px; overflow:hidden; }
+  .bar-fill{ height:100%; background:var(--green); border-radius:5px; transition:width .3s ease; }
+  .bar-fill.over{ background:var(--red); }
+  .bar-fill.warn{ background:var(--gold); }
+
+  button{ cursor:pointer; }
+  .btn{
+    font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:13px; padding:9px 16px;
+    border-radius:7px; border:none; background:var(--ink); color:var(--paper-card);
+    transition:transform .1s ease, background .15s ease;
+  }
+  .btn:hover{ background:#324063; }
+  .btn:active{ transform:scale(0.97); }
+  .btn.gold{ background:var(--gold-dark); }
+  .btn.gold:hover{ background:var(--gold); }
+  .btn.ghost{ background:none; border:1.5px solid var(--ink-soft); color:var(--ink-soft); padding:7px 12px; font-size:12px; }
+  .btn.ghost:hover{ color:var(--ink); border-color:var(--ink); }
+  .btn.danger{ color:var(--red); border-color:var(--red); }
+  .btn.danger:hover{ background:var(--red); color:#fff; }
+  .btn.small{ padding:6px 11px; font-size:12px; }
+  .btn.full{ width:100%; }
+  .btn:disabled{ opacity:0.6; cursor:default; }
+
+  .form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
+  .form-grid.single{ grid-template-columns:1fr; }
+  .field{ display:flex; flex-direction:column; gap:5px; }
+  .field.span2{ grid-column:1 / -1; }
+  label{ font-size:11.5px; font-weight:600; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.5px; }
+  input, select, textarea{
+    font-family:'IBM Plex Mono', monospace; font-size:14px; padding:10px 11px; border-radius:7px;
+    border:1.5px solid rgba(36,48,74,0.2); background:#fff; color:var(--ink); outline:none; width:100%;
+  }
+  input:focus, select:focus, textarea:focus{ border-color:var(--gold); }
+  select{ font-family:'Space Grotesk',sans-serif; }
+
+  .type-toggle{ display:flex; gap:8px; margin-bottom:14px; }
+  .type-toggle button{
+    flex:1; padding:10px; border-radius:7px; border:1.5px solid rgba(36,48,74,0.2); background:#fff;
+    font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:13px; color:var(--ink-soft);
+  }
+  .type-toggle button.active.income{ background:var(--green); border-color:var(--green); color:#fff; }
+  .type-toggle button.active.expense{ background:var(--red); border-color:var(--red); color:#fff; }
+  .type-toggle button.active.transfer{ background:var(--gold-dark); border-color:var(--gold-dark); color:#fff; }
+
+  .tx-item{ display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid rgba(36,48,74,0.10); gap:10px; }
+  .tx-item:last-child{ border-bottom:none; }
+  .tx-left{ display:flex; flex-direction:column; gap:2px; }
+  .tx-note{ font-weight:600; font-size:14px; }
+  .tx-meta{ font-size:11.5px; color:var(--ink-soft); }
+  .tx-amount{ font-weight:700; font-size:15px; white-space:nowrap; }
+  .tx-amount.income{ color:var(--green); }
+  .tx-amount.expense{ color:var(--red); }
+  .tx-amount.transfer{ color:var(--gold-dark); }
+  .tx-del{ background:none;border:none;color:var(--ink-soft); font-size:16px;padding:4px 8px;border-radius:5px; }
+  .tx-del:hover{ color:var(--red); background:rgba(184,67,61,0.1); }
+
+  .empty-state{ text-align:center; padding:30px 10px; color:var(--ink-soft); font-size:13.5px; }
+  .filter-row{ display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+  .filter-row select{ flex:1; min-width:120px; }
+
+  .banner{
+    font-size:12.5px; padding:10px 14px; border-radius:8px; margin-bottom:18px; line-height:1.5;
+  }
+  .banner.info{ background:rgba(169,129,47,0.12); border:1px solid rgba(169,129,47,0.35); color:var(--gold-dark); }
+  .banner.error{ background:rgba(184,67,61,0.10); border:1px solid rgba(184,67,61,0.35); color:var(--red); }
+  .banner.offline{ background:rgba(91,107,133,0.12); border:1px solid rgba(91,107,133,0.35); color:var(--ink-soft); }
+
+  .toolbar-row{ display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:10px; flex-wrap:wrap; }
+  .loading-spin{ text-align:center; padding:60px 20px; color:var(--ink-soft); font-size:14px; }
+
+  .sync-code-box{
+    font-family:'IBM Plex Mono',monospace; font-size:22px; font-weight:700; letter-spacing:2px;
+    background:#fff; border:2px dashed var(--gold); border-radius:8px; padding:14px 18px;
+    text-align:center; margin:14px 0; word-break:break-all;
+  }
+  .sync-row{ display:flex; gap:8px; align-items:center; margin-top:10px;}
+  .divider-or{
+    text-align:center; color:var(--ink-soft); font-size:12px; margin:22px 0; position:relative;
+  }
+  .divider-or::before, .divider-or::after{
+    content:""; position:absolute; top:50%; width:40%; height:1px; background:rgba(36,48,74,0.2);
+  }
+  .divider-or::before{ left:0; } .divider-or::after{ right:0; }
+
+  .setup-wrap{ max-width:480px; margin:40px auto; padding:0 20px; }
+
+  .header-actions{ display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
+
+  @media (max-width:480px){
+    .form-grid{ grid-template-columns:1fr; }
+    h1{ font-size:26px; }
+    .stamp{ width:58px;height:58px; font-size:8px; top:16px; }
+    .total-amount{ font-size:32px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="root">
+  <div class="loading-spin">Membuka buku kas...</div>
+</div>
+
+<script>
+(function(){
+  const REMOTE_BASE = 'https://jsonblob.com/api/jsonBlob';
+  const LS_CODE_KEY = 'dompetBarengSyncCode';
+  const LS_CACHE_KEY = 'dompetBarengCache';
+
+  // Beberapa browser (terutama Safari) memblokir localStorage saat file dibuka
+  // langsung dari file lokal (file://). Bungkus semua akses biar tidak bikin
+  // seluruh script berhenti jalan kalau localStorage tidak tersedia.
+  let memoryFallback = {};
+  const safeStorage = {
+    get(key){
+      try{ return localStorage.getItem(key); }
+      catch(e){ return memoryFallback[key] || null; }
+    },
+    set(key, val){
+      try{ localStorage.setItem(key, val); }
+      catch(e){ memoryFallback[key] = val; }
+    }
+  };
+
+  let state = { wallets:[], categories:[], transactions:[] };
+  let syncCode = safeStorage.get(LS_CODE_KEY) || null;
+  let storageBlocked = false;
+  try{ localStorage.getItem('__test__'); } catch(e){ storageBlocked = true; }
+  let currentTab = 'dashboard';
+  let txTypeDraft = 'expense';
+  let statusMsg = null; // {type:'info'|'error'|'offline', text}
+  let dataLoaded = false;
+  let saving = false;
+
+  const fmt = (n) => {
+    const num = Math.round(Number(n) || 0);
+    const neg = num < 0;
+    const s = Math.abs(num).toLocaleString('id-ID');
+    return (neg ? '-Rp ' : 'Rp ') + s;
+  };
+  const todayStr = () => new Date().toISOString().slice(0,10);
+  const monthKey = (d) => (d || todayStr()).slice(0,7);
+  const uid = () => Math.random().toString(36).slice(2,10) + Date.now().toString(36);
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+  // ============ REMOTE SYNC ============
+  async function createNewBlob(){
+    const res = await fetch(REMOTE_BASE, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({wallets:[],categories:[],transactions:[]})
+    });
+    if(!res.ok) throw new Error('Gagal membuat kode sinkron baru');
+    let loc = res.headers.get('Location') || res.headers.get('location');
+    if(!loc){ throw new Error('Server tidak mengembalikan kode'); }
+    return loc.split('/').pop();
+  }
+
+  async function fetchRemote(code){
+    const res = await fetch(REMOTE_BASE+'/'+code, {cache:'no-store'});
+    if(!res.ok) throw new Error('Kode tidak ditemukan atau gagal memuat (status '+res.status+')');
+    return await res.json();
+  }
+
+  async function pushRemote(code, data){
+    const res = await fetch(REMOTE_BASE+'/'+code, {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(data)
+    });
+    if(!res.ok) throw new Error('Gagal menyimpan ke server (status '+res.status+')');
+  }
+
+  function cacheLocally(){
+    safeStorage.set(LS_CACHE_KEY, JSON.stringify(state));
+  }
+  function loadCache(){
+    try{
+      const raw = safeStorage.get(LS_CACHE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }catch(e){ return null; }
+  }
+
+  async function loadFromRemote(showLoading){
+    if(showLoading){ dataLoaded=false; render(); }
+    try{
+      const data = await fetchRemote(syncCode);
+      state.wallets = data.wallets || [];
+      state.categories = data.categories || [];
+      state.transactions = data.transactions || [];
+      statusMsg = null;
+      cacheLocally();
+    } catch(e){
+      const cached = loadCache();
+      if(cached){
+        state = cached;
+        statusMsg = {type:'offline', text:'Tidak bisa konek ke server. Menampilkan data terakhir yang tersimpan di HP ini. Coba tombol Sinkron ulang saat koneksi internet stabil.'};
+      } else {
+        statusMsg = {type:'error', text: e.message + '. Cek koneksi internet, lalu coba lagi.'};
+      }
+    }
+    dataLoaded = true;
+    render();
+  }
+
+  async function persist(){
+    cacheLocally();
+    saving = true;
+    render();
+    try{
+      await pushRemote(syncCode, state);
+      statusMsg = null;
+    } catch(e){
+      statusMsg = {type:'offline', text:'Perubahan tersimpan di HP ini tapi belum berhasil sinkron ke server. Coba tombol Sinkron ulang.'};
+    }
+    saving = false;
+    render();
+  }
+
+  // ============ CALCULATIONS ============
+  function walletBalance(walletId){
+    let bal = 0;
+    const w = state.wallets.find(x=>x.id===walletId);
+    if(w) bal = Number(w.startBalance)||0;
+    state.transactions.forEach(t=>{
+      if(t.type==='income' && t.walletId===walletId) bal += Number(t.amount);
+      if(t.type==='expense' && t.walletId===walletId) bal -= Number(t.amount);
+      if(t.type==='transfer'){
+        if(t.walletId===walletId) bal -= Number(t.amount);
+        if(t.toWalletId===walletId) bal += Number(t.amount);
+      }
+    });
+    return bal;
+  }
+  function totalBalance(){ return state.wallets.reduce((s,w)=>s+walletBalance(w.id),0); }
+  function monthTotals(m){
+    let income=0, expense=0;
+    state.transactions.forEach(t=>{
+      if(monthKey(t.date)!==m) return;
+      if(t.type==='income') income += Number(t.amount);
+      if(t.type==='expense') expense += Number(t.amount);
+    });
+    return {income, expense};
+  }
+  function categorySpent(catId, m){
+    return state.transactions.reduce((s,t)=>{
+      if(t.type==='expense' && t.categoryId===catId && monthKey(t.date)===m) return s + Number(t.amount);
+      return s;
+    },0);
+  }
+  function walletLabel(id){ const w = state.wallets.find(x=>x.id===id); return w ? w.name : '(dompet dihapus)'; }
+  function catLabel(id){ if(!id) return '-'; const c = state.categories.find(x=>x.id===id); return c ? c.name : '(kategori dihapus)'; }
+
+  // ============ RENDER: SETUP SCREEN ============
+  function renderSetup(){
+    return '<div class="setup-wrap">'+
+      '<header style="padding:20px 0 10px;position:static;">'+
+        '<h1>Dompet Bareng</h1>'+
+        '<p class="subtitle">Buku kas keuangan berdua, bisa dibuka dari HP kamu &amp; Pi.</p>'+
+      '</header>'+
+      '<div class="ledger-sheet">'+
+        '<h2>Mulai Buku Kas Baru</h2>'+
+        '<p style="font-size:13px;color:var(--ink-soft);margin:0 0 12px;">Kalau ini pertama kali, bikin buku kas baru dulu. Nanti dapet kode unik buat dibagikan ke Pi.</p>'+
+        '<button class="btn gold full" id="btnCreate">+ Buat Buku Kas Baru</button>'+
+      '</div>'+
+      '<div class="divider-or">ATAU</div>'+
+      '<div class="ledger-sheet">'+
+        '<h2>Sudah Punya Kode dari Pasangan?</h2>'+
+        '<div class="field"><label>Masukkan Kode Sinkron</label><input id="joinCode" placeholder="tempel kode di sini"></div>'+
+        '<button class="btn full" id="btnJoin" style="margin-top:10px;">Gabung ke Buku Kas Ini</button>'+
+      '</div>'+
+    '</div>';
+  }
+
+  // ============ RENDER: MAIN APP ============
+  function statusBanner(){
+    if(!statusMsg) return '';
+    return '<div class="banner '+statusMsg.type+'">'+esc(statusMsg.text)+'</div>';
+  }
+
+  function renderHeader(){
+    return '<header>'+
+      '<div class="stamp">BUKU<br>KAS<br>BERSAMA</div>'+
+      '<h1>Dompet Bareng</h1>'+
+      '<p class="subtitle">Catatan keuangan Tata &amp; Pi</p>'+
+      '<p class="ledger-no mono">'+new Date().toLocaleDateString('id-ID',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+'</p>'+
+      '<div class="header-actions">'+
+        '<button class="btn ghost small" id="btnSync">'+(saving?'Menyimpan...':'🔄 Sinkron')+'</button>'+
+        '<button class="btn ghost small" id="btnShowCode">Kode Sinkron</button>'+
+      '</div>'+
+    '</header>'+
+    '<nav class="tabs">'+
+      ['dashboard','wallets','categories','transactions'].map(t=>{
+        const label = t==='dashboard'?'Ringkasan':t==='wallets'?'Dompet':t==='categories'?'Kategori':'Transaksi';
+        return '<button class="tab-btn'+(currentTab===t?' active':'')+'" data-tab="'+t+'">'+label+'</button>';
+      }).join('')+
+    '</nav>';
+  }
+
+  function renderCodePanel(){
+    return '<div class="ledger-sheet">'+
+      '<h2>Kode Sinkron Buku Kas Ini</h2>'+
+      '<p style="font-size:13px;color:var(--ink-soft);margin:0 0 8px;">Bagikan kode ini ke Pi. Dia tinggal masukin kode yang sama di HP-nya biar datanya nyambung.</p>'+
+      '<div class="sync-code-box mono" id="codeText">'+esc(syncCode)+'</div>'+
+      '<div class="sync-row"><button class="btn gold" id="btnCopyCode">Salin Kode</button>'+
+      '<button class="btn ghost" id="btnBackFromCode">Kembali</button></div>'+
+    '</div>';
+  }
+
+  function renderDashboard(){
+    const m = todayStr().slice(0,7);
+    const {income, expense} = monthTotals(m);
+    const total = totalBalance();
+    const monthName = new Date(m+'-01').toLocaleDateString('id-ID',{month:'long', year:'numeric'});
+    let html = '';
+    html += '<div class="ledger-sheet"><h2>Total Saldo Semua Dompet</h2>';
+    html += '<div class="total-box"><div class="total-amount '+(total<0?'negative':'')+'">'+fmt(total)+'</div></div>';
+    html += '<div class="quick-stats">';
+    html += '<div class="quick-stat">Pemasukan '+monthName+'<br><span class="val income mono">'+fmt(income)+'</span></div>';
+    html += '<div class="quick-stat">Pengeluaran '+monthName+'<br><span class="val expense mono">'+fmt(expense)+'</span></div>';
+    html += '</div></div>';
+
+    html += '<div class="ledger-sheet"><h2>Saldo per Dompet</h2>';
+    if(state.wallets.length===0){
+      html += '<div class="empty-state">Belum ada dompet. Tambah dulu di tab Dompet.</div>';
+    } else {
+      html += '<div class="wallet-grid">';
+      state.wallets.forEach(w=>{
+        const bal = walletBalance(w.id);
+        html += '<div class="wallet-card"><div class="wallet-badge">'+(w.name[0]||'?').toUpperCase()+'</div>';
+        html += '<div class="wallet-name">'+esc(w.name)+'</div>';
+        html += '<div class="wallet-type">'+esc(w.type)+'</div>';
+        html += '<div class="wallet-balance '+(bal<0?'expense':'')+'">'+fmt(bal)+'</div></div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+
+    html += '<div class="ledger-sheet"><h2>Budget Kategori — '+monthName+'</h2>';
+    if(state.categories.length===0){
+      html += '<div class="empty-state">Belum ada kategori budget. Tambah di tab Kategori.</div>';
+    } else {
+      state.categories.forEach(c=>{
+        const spent = categorySpent(c.id, m);
+        const budget = Number(c.budget)||0;
+        const pct = budget>0 ? Math.min(100, (spent/budget)*100) : 0;
+        const over = budget>0 && spent>budget;
+        const warn = !over && budget>0 && spent/budget>=0.8;
+        html += '<div class="cat-row"><div class="cat-top"><span class="cat-name">'+esc(c.name)+'</span>';
+        html += '<span class="cat-figures mono"><b>'+fmt(spent)+'</b> / '+fmt(budget)+'</span></div>';
+        html += '<div class="bar-track"><div class="bar-fill '+(over?'over':warn?'warn':'')+'" style="width:'+pct+'%"></div></div></div>';
+      });
+    }
+    html += '</div>';
+
+    html += '<div class="ledger-sheet"><h2>Transaksi Terbaru</h2>';
+    html += renderTxList(state.transactions.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).slice(0,6));
+    html += '</div>';
+    return html;
+  }
+
+  function renderWallets(){
+    let html = '<div class="ledger-sheet"><h2>Tambah Dompet Baru</h2>';
+    html += '<div class="form-grid">';
+    html += field('Nama Dompet', '<input id="wName" placeholder="cth. BCA Tata, Cash, GoPay">');
+    html += field('Jenis', '<select id="wType"><option>Cash</option><option>Bank</option><option>E-Wallet</option><option>Tabungan</option><option>Lainnya</option></select>');
+    html += field('Saldo Awal', '<input id="wStart" type="number" placeholder="0">');
+    html += '</div>';
+    html += '<button class="btn gold full" id="addWalletBtn">+ Tambah Dompet</button></div>';
+
+    html += '<div class="ledger-sheet"><h2>Semua Dompet</h2>';
+    if(state.wallets.length===0){
+      html += '<div class="empty-state">Belum ada dompet.</div>';
+    } else {
+      html += '<div class="wallet-grid">';
+      state.wallets.forEach(w=>{
+        const bal = walletBalance(w.id);
+        html += '<div class="wallet-card"><div class="wallet-badge">'+(w.name[0]||'?').toUpperCase()+'</div>';
+        html += '<div class="wallet-name">'+esc(w.name)+'</div>';
+        html += '<div class="wallet-type">'+esc(w.type)+'</div>';
+        html += '<div class="wallet-balance '+(bal<0?'expense':'')+'">'+fmt(bal)+'</div>';
+        html += '<div class="wallet-actions"><button class="btn ghost danger small" data-del-wallet="'+w.id+'">Hapus</button></div></div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function renderCategories(){
+    let html = '<div class="ledger-sheet"><h2>Tambah Kategori Budget</h2>';
+    html += '<div class="form-grid">';
+    html += field('Nama Kategori', '<input id="cName" placeholder="cth. Makan, Kucing, Cicilan">');
+    html += field('Budget per Bulan', '<input id="cBudget" type="number" placeholder="0">');
+    html += '</div>';
+    html += '<button class="btn gold full" id="addCatBtn">+ Tambah Kategori</button></div>';
+
+    const m = todayStr().slice(0,7);
+    html += '<div class="ledger-sheet"><h2>Semua Kategori</h2>';
+    if(state.categories.length===0){
+      html += '<div class="empty-state">Belum ada kategori.</div>';
+    } else {
+      state.categories.forEach(c=>{
+        const spent = categorySpent(c.id, m);
+        const budget = Number(c.budget)||0;
+        const pct = budget>0 ? Math.min(100,(spent/budget)*100) : 0;
+        const over = budget>0 && spent>budget;
+        const warn = !over && budget>0 && spent/budget>=0.8;
+        html += '<div class="cat-row"><div class="cat-top"><span class="cat-name">'+esc(c.name)+'</span>';
+        html += '<span class="cat-figures mono"><b>'+fmt(spent)+'</b> / '+fmt(budget)+'</span></div>';
+        html += '<div class="bar-track"><div class="bar-fill '+(over?'over':warn?'warn':'')+'" style="width:'+pct+'%"></div></div>';
+        html += '<div style="margin-top:8px"><button class="btn ghost danger small" data-del-cat="'+c.id+'">Hapus Kategori</button></div></div>';
+      });
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function renderTransactions(){
+    let html = '<div class="ledger-sheet"><h2>Catat Transaksi</h2>';
+    html += '<div class="type-toggle">';
+    ['expense','income','transfer'].forEach(t=>{
+      const label = t==='expense'?'Pengeluaran':t==='income'?'Pemasukan':'Transfer';
+      html += '<button data-type="'+t+'" class="'+(txTypeDraft===t?'active '+t:'')+'">'+label+'</button>';
+    });
+    html += '</div>';
+
+    if(state.wallets.length===0){
+      html += '<div class="empty-state">Tambah dompet dulu di tab Dompet sebelum mencatat transaksi.</div></div>';
+      return html;
+    }
+
+    html += '<div class="form-grid">';
+    html += field('Jumlah', '<input id="tAmount" type="number" placeholder="0">');
+    html += field('Tanggal', '<input id="tDate" type="date" value="'+todayStr()+'">');
+    html += field(txTypeDraft==='transfer' ? 'Dari Dompet' : 'Dompet', '<select id="tWallet">'+state.wallets.map(w=>'<option value="'+w.id+'">'+esc(w.name)+'</option>').join('')+'</select>');
+    if(txTypeDraft==='transfer'){
+      html += field('Ke Dompet', '<select id="tToWallet">'+state.wallets.map(w=>'<option value="'+w.id+'">'+esc(w.name)+'</option>').join('')+'</select>');
+    }
+    if(txTypeDraft==='expense'){
+      html += field('Kategori', '<select id="tCategory"><option value="">- Tanpa kategori -</option>'+state.categories.map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('')+'</select>');
+    }
+    html += field('Catatan', '<input id="tNote" placeholder="cth. belanja pasar, gaji, dll">', 'span2');
+    html += '</div>';
+    html += '<button class="btn gold full" id="addTxBtn">+ Simpan Transaksi</button></div>';
+
+    html += '<div class="ledger-sheet"><h2>Riwayat Transaksi</h2>';
+    html += '<div class="filter-row">';
+    html += '<select id="filterWallet"><option value="">Semua Dompet</option>'+state.wallets.map(w=>'<option value="'+w.id+'">'+esc(w.name)+'</option>').join('')+'</select>';
+    html += '<select id="filterType"><option value="">Semua Jenis</option><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option><option value="transfer">Transfer</option></select>';
+    html += '</div>';
+    html += '<div id="txListWrap">'+renderTxList(state.transactions.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)))+'</div></div>';
+    return html;
+  }
+
+  function renderTxList(list){
+    if(list.length===0) return '<div class="empty-state">Belum ada transaksi.</div>';
+    return list.map(t=>{
+      const sign = t.type==='income' ? '+' : t.type==='expense' ? '-' : '⇄';
+      const dateStr = new Date(t.date+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+      let metaLine = dateStr + ' · ' + walletLabel(t.walletId);
+      if(t.type==='transfer') metaLine += ' → ' + walletLabel(t.toWalletId);
+      if(t.type==='expense' && t.categoryId) metaLine += ' · ' + catLabel(t.categoryId);
+      return '<div class="tx-item"><div class="tx-left"><div class="tx-note">'+esc(t.note || (t.type==='transfer'?'Transfer antar dompet':'(tanpa catatan)'))+'</div>'+
+        '<div class="tx-meta">'+metaLine+'</div></div>'+
+        '<div style="display:flex;align-items:center;gap:6px">'+
+        '<div class="tx-amount '+t.type+' mono">'+sign+' '+fmt(t.amount)+'</div>'+
+        '<button class="tx-del" data-del-tx="'+t.id+'" title="Hapus">✕</button></div></div>';
+    }).join('');
+  }
+
+  function field(labelText, inputHtml, span){
+    return '<div class="field'+(span?' '+span:'')+'"><label>'+labelText+'</label>'+inputHtml+'</div>';
+  }
+
+  // ============ MAIN RENDER ============
+  let showCodePanel = false;
+
+  function render(){
+    const root = document.getElementById('root');
+    if(!syncCode){
+      root.innerHTML = renderSetup();
+      attachSetupHandlers();
+      return;
+    }
+    if(!dataLoaded){
+      root.innerHTML = '<div class="loading-spin">Mengambil data dari server...</div>';
+      return;
+    }
+    let html = renderHeader();
+    html += '<main>';
+    if(storageBlocked){
+      html += '<div class="banner offline">Browser ini memblokir penyimpanan lokal (biasanya kalau dibuka dari Files/lokal langsung di Safari, atau mode Private). Kode sinkron tidak akan tersimpan otomatis — catat kodenya manual dan masukkan lagi tiap buka app.</div>';
+    }
+    html += statusBanner();
+    if(showCodePanel){
+      html += renderCodePanel();
+    } else {
+      if(currentTab==='dashboard') html += renderDashboard();
+      else if(currentTab==='wallets') html += renderWallets();
+      else if(currentTab==='categories') html += renderCategories();
+      else if(currentTab==='transactions') html += renderTransactions();
+    }
+    html += '</main>';
+    root.innerHTML = html;
+    attachAppHandlers();
+  }
+
+  function attachSetupHandlers(){
+    document.getElementById('btnCreate').onclick = async (e)=>{
+      e.target.disabled = true; e.target.textContent = 'Membuat...';
+      try{
+        const code = await createNewBlob();
+        syncCode = code;
+        safeStorage.set(LS_CODE_KEY, code);
+        dataLoaded = false;
+        showCodePanel = true;
+        await loadFromRemote(false);
+      }catch(err){
+        alert('Gagal membuat buku kas baru: '+err.message+'. Cek koneksi internet lalu coba lagi.');
+        e.target.disabled = false; e.target.textContent = '+ Buat Buku Kas Baru';
+      }
+    };
+    document.getElementById('btnJoin').onclick = async ()=>{
+      const code = document.getElementById('joinCode').value.trim();
+      if(!code){ alert('Masukkan kode dulu'); return; }
+      syncCode = code;
+      safeStorage.set(LS_CODE_KEY, code);
+      dataLoaded = false;
+      await loadFromRemote(false);
+    };
+  }
+
+  function attachAppHandlers(){
+    document.querySelectorAll('.tab-btn').forEach(b=>{
+      b.onclick = ()=>{ currentTab = b.dataset.tab; showCodePanel=false; render(); };
+    });
+    document.getElementById('btnSync').onclick = ()=> loadFromRemote(false);
+    document.getElementById('btnShowCode').onclick = ()=>{ showCodePanel = true; render(); };
+    const back = document.getElementById('btnBackFromCode');
+    if(back) back.onclick = ()=>{ showCodePanel = false; render(); };
+    const copyBtn = document.getElementById('btnCopyCode');
+    if(copyBtn) copyBtn.onclick = ()=>{
+      navigator.clipboard.writeText(syncCode).then(()=>{
+        copyBtn.textContent = 'Tersalin!';
+        setTimeout(()=>{ copyBtn.textContent='Salin Kode'; }, 1500);
+      }).catch(()=>{ alert('Kode: '+syncCode); });
+    };
+
+    const addWalletBtn = document.getElementById('addWalletBtn');
+    if(addWalletBtn) addWalletBtn.onclick = async ()=>{
+      const name = document.getElementById('wName').value.trim();
+      const type = document.getElementById('wType').value;
+      const start = document.getElementById('wStart').value || 0;
+      if(!name){ alert('Nama dompet tidak boleh kosong'); return; }
+      state.wallets.push({id:uid(), name, type, startBalance:Number(start)});
+      render();
+      await persist();
+    };
+    document.querySelectorAll('[data-del-wallet]').forEach(b=>{
+      b.onclick = async ()=>{
+        if(!confirm('Hapus dompet ini? Transaksi terkait tetap tersimpan.')) return;
+        state.wallets = state.wallets.filter(w=>w.id!==b.dataset.delWallet);
+        render();
+        await persist();
+      };
+    });
+
+    const addCatBtn = document.getElementById('addCatBtn');
+    if(addCatBtn) addCatBtn.onclick = async ()=>{
+      const name = document.getElementById('cName').value.trim();
+      const budget = document.getElementById('cBudget').value || 0;
+      if(!name){ alert('Nama kategori tidak boleh kosong'); return; }
+      state.categories.push({id:uid(), name, budget:Number(budget)});
+      render();
+      await persist();
+    };
+    document.querySelectorAll('[data-del-cat]').forEach(b=>{
+      b.onclick = async ()=>{
+        if(!confirm('Hapus kategori ini?')) return;
+        state.categories = state.categories.filter(c=>c.id!==b.dataset.delCat);
+        render();
+        await persist();
+      };
+    });
+
+    document.querySelectorAll('.type-toggle button').forEach(b=>{
+      b.onclick = ()=>{ txTypeDraft = b.dataset.type; render(); };
+    });
+
+    const addTxBtn = document.getElementById('addTxBtn');
+    if(addTxBtn) addTxBtn.onclick = async ()=>{
+      const amount = Number(document.getElementById('tAmount').value);
+      const date = document.getElementById('tDate').value || todayStr();
+      const walletId = document.getElementById('tWallet').value;
+      const note = document.getElementById('tNote').value.trim();
+      if(!amount || amount<=0){ alert('Jumlah harus lebih dari 0'); return; }
+      const tx = {id:uid(), type:txTypeDraft, amount, date, walletId, note};
+      if(txTypeDraft==='transfer'){
+        tx.toWalletId = document.getElementById('tToWallet').value;
+        if(tx.toWalletId===walletId){ alert('Dompet asal dan tujuan tidak boleh sama'); return; }
+      }
+      if(txTypeDraft==='expense'){
+        tx.categoryId = document.getElementById('tCategory').value || null;
+      }
+      state.transactions.push(tx);
+      render();
+      await persist();
+    };
+    document.querySelectorAll('[data-del-tx]').forEach(b=>{
+      b.onclick = async ()=>{
+        state.transactions = state.transactions.filter(t=>t.id!==b.dataset.delTx);
+        render();
+        await persist();
+      };
+    });
+
+    const fw = document.getElementById('filterWallet');
+    const ft = document.getElementById('filterType');
+    if(fw && ft){
+      const applyFilter = ()=>{
+        let list = state.transactions.slice();
+        if(fw.value) list = list.filter(t=>t.walletId===fw.value || t.toWalletId===fw.value);
+        if(ft.value) list = list.filter(t=>t.type===ft.value);
+        list.sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
+        document.getElementById('txListWrap').innerHTML = renderTxList(list);
+        document.querySelectorAll('[data-del-tx]').forEach(b=>{
+          b.onclick = async ()=>{
+            state.transactions = state.transactions.filter(t=>t.id!==b.dataset.delTx);
+            render();
+            await persist();
+          };
+        });
+      };
+      fw.onchange = applyFilter;
+      ft.onchange = applyFilter;
+    }
+  }
+
+  // Auto refresh when returning to tab
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState==='visible' && syncCode && dataLoaded){
+      loadFromRemote(false);
+    }
+  });
+
+  // ============ INIT ============
+  try{
+    if(syncCode){
+      loadFromRemote(true);
+    } else {
+      render();
+    }
+  } catch(e){
+    document.getElementById('root').innerHTML =
+      '<div class="setup-wrap"><div class="ledger-sheet"><h2>Terjadi Error</h2>'+
+      '<p style="font-size:13px;color:var(--ink-soft);">'+esc(e.message)+'</p>'+
+      '<p style="font-size:12px;color:var(--ink-soft);">Coba tutup dan buka lagi filenya, atau buka di browser lain (Chrome).</p></div></div>';
+  }
+
+  window.addEventListener('error', function(e){
+    const root = document.getElementById('root');
+    if(root && root.innerHTML.indexOf('Membuka buku kas') !== -1){
+      root.innerHTML =
+        '<div class="setup-wrap"><div class="ledger-sheet"><h2>Gagal Memuat</h2>'+
+        '<p style="font-size:13px;color:var(--ink-soft);">'+esc(e.message||'Terjadi kesalahan saat memuat aplikasi.')+'</p>'+
+        '<p style="font-size:12px;color:var(--ink-soft);">Coba buka di Chrome, atau kirim pesan errornya ke Claude biar dibetulin.</p></div></div>';
+    }
+  });
+})();
+</script>
+</body>
+</html>
