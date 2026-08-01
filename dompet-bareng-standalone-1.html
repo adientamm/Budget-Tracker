@@ -279,6 +279,7 @@
   let editCatId = null;
   let editTxId = null;
   let editTxType = null;
+  let expandedCatId = null;
   let statusMsg = null; // {type:'info'|'error'|'offline', text}
   let dataLoaded = false;
   let saving = false;
@@ -407,6 +408,20 @@
   function walletLabel(id){ const w = state.wallets.find(x=>x.id===id); return w ? w.name : '(dompet dihapus)'; }
   function catLabel(id){ if(!id) return '-'; const c = state.categories.find(x=>x.id===id); return c ? c.name : '(kategori dihapus)'; }
 
+  function renderCatTxDetail(catId, m){
+    const list = state.transactions
+      .filter(t=>t.type==='expense' && t.categoryId===catId && monthKey(t.date)===m)
+      .sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
+    let html = '<div style="margin-top:12px;padding-top:12px;border-top:1px dashed rgba(36,48,74,0.2);">';
+    if(list.length===0){
+      html += '<div class="empty-state" style="padding:14px 0;">Belum ada transaksi di kategori ini bulan ini.</div>';
+    } else {
+      html += renderTxList(list);
+    }
+    html += '</div>';
+    return html;
+  }
+
   // ============ RENDER: SETUP SCREEN ============
   function renderSetup(){
     return '<div class="setup-wrap">'+
@@ -515,10 +530,12 @@
         const pct = budget>0 ? Math.min(100, (spent/budget)*100) : 0;
         const over = budget>0 && spent>budget;
         const warn = !over && budget>0 && spent/budget>=0.8;
-        html += '<div class="cat-row"><div class="cat-top"><span class="cat-name">'+(c.icon||CAT_ICONS[0])+' '+esc(c.name)+'</span>';
+        html += '<div class="cat-row" data-toggle-cat="'+c.id+'" style="cursor:pointer;"><div class="cat-top"><span class="cat-name">'+(c.icon||CAT_ICONS[0])+' '+esc(c.name)+'</span>';
         html += '<span class="cat-figures mono"><b>'+fmt(spent)+'</b> / '+fmt(budget)+'</span></div>';
         html += '<div class="bar-track"><div class="bar-fill '+(over?'over':warn?'warn':'')+'" style="width:'+pct+'%"></div></div>';
-        html += '<div style="margin-top:6px;font-size:12.5px;color:var(--ink-soft);">Sisa: <span class="mono" style="font-weight:600;color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span></div></div>';
+        html += '<div style="margin-top:6px;font-size:12.5px;color:var(--ink-soft);">Sisa: <span class="mono" style="font-weight:600;color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span> <span style="float:right;">'+(expandedCatId===c.id?'▲ Tutup':'▼ Lihat transaksi')+'</span></div>';
+        if(expandedCatId===c.id){ html += renderCatTxDetail(c.id, m); }
+        html += '</div>';
       });
     }
     html += '</div>';
@@ -618,7 +635,10 @@
         html += '<div class="bar-track"><div class="bar-fill '+(over?'over':warn?'warn':'')+'" style="width:'+pct+'%"></div></div>';
         html += '<div style="margin-top:6px;font-size:12.5px;color:var(--ink-soft);">Sisa: <span class="mono" style="font-weight:600;color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span></div>';
         html += '<div style="margin-top:8px;display:flex;gap:8px;align-items:center;">';
-        html += '<button class="btn ghost small" data-edit-cat="'+c.id+'">Edit</button><button class="btn ghost danger small" data-del-cat="'+c.id+'">Hapus</button></div></div>';
+        html += '<button class="btn ghost small" data-toggle-cat="'+c.id+'">'+(expandedCatId===c.id?'▲ Tutup':'▼ Transaksi')+'</button>';
+        html += '<button class="btn ghost small" data-edit-cat="'+c.id+'">Edit</button><button class="btn ghost danger small" data-del-cat="'+c.id+'">Hapus</button></div>';
+        if(expandedCatId===c.id){ html += renderCatTxDetail(c.id, m); }
+        html += '</div>';
       });
     }
     html += '</div>';
@@ -862,6 +882,14 @@
         state.categories = state.categories.filter(c=>c.id!==b.dataset.delCat);
         render();
         await persist();
+      };
+    });
+    document.querySelectorAll('[data-toggle-cat]').forEach(el=>{
+      el.onclick = (e)=>{
+        if(e.target.closest('[data-edit-cat],[data-del-cat]')) return;
+        const id = el.dataset.toggleCat;
+        expandedCatId = (expandedCatId===id) ? null : id;
+        render();
       };
     });
     document.querySelectorAll('[data-edit-cat]').forEach(b=>{
