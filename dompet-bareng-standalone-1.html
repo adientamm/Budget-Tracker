@@ -202,6 +202,12 @@
   .tx-del{ background:none;border:none;color:var(--ink-soft); font-size:16px;padding:4px 8px;border-radius:5px; }
   .tx-del:hover{ color:var(--red); background:rgba(184,67,61,0.1); }
 
+  .tx-item.compact{ padding:8px 10px; margin-bottom:6px; gap:6px; }
+  .tx-item.compact .tx-note{ font-size:12.5px; }
+  .tx-item.compact .tx-meta{ font-size:10.5px; }
+  .tx-item.compact .tx-amount{ font-size:13px; }
+  .tx-item.compact .tx-del{ font-size:13px; padding:2px 6px; }
+
   .empty-state{ text-align:center; padding:30px 10px; color:var(--ink-soft); font-size:13.5px; }
   .filter-row{ display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
   .filter-row select{ flex:1; min-width:120px; }
@@ -416,7 +422,7 @@
     if(list.length===0){
       html += '<div class="empty-state" style="padding:14px 0;">Belum ada transaksi di kategori ini bulan ini.</div>';
     } else {
-      html += renderTxList(list);
+      html += renderTxList(list, true);
     }
     html += '</div>';
     return html;
@@ -682,7 +688,7 @@
     return html;
   }
 
-  function renderTxList(list){
+  function renderTxList(list, compact){
     if(list.length===0) return '<div class="empty-state">Belum ada transaksi.</div>';
     return list.map(t=>{
       if(t.id===editTxId){
@@ -692,8 +698,8 @@
       const dateStr = new Date(t.date+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
       let metaLine = dateStr + ' · ' + walletLabel(t.walletId);
       if(t.type==='transfer') metaLine += ' → ' + walletLabel(t.toWalletId);
-      if(t.type==='expense' && t.categoryId) metaLine += ' · ' + catLabel(t.categoryId);
-      return '<div class="tx-item"><div class="tx-left"><div class="tx-note">'+esc(t.note || (t.type==='transfer'?'Transfer antar dompet':'(tanpa catatan)'))+'</div>'+
+      if(t.type==='expense' && t.categoryId && !compact) metaLine += ' · ' + catLabel(t.categoryId);
+      return '<div class="tx-item'+(compact?' compact':'')+'"><div class="tx-left"><div class="tx-note">'+esc(t.note || (t.type==='transfer'?'Transfer antar dompet':'(tanpa catatan)'))+'</div>'+
         '<div class="tx-meta">'+metaLine+'</div></div>'+
         '<div style="display:flex;align-items:center;gap:6px">'+
         '<div class="tx-amount '+t.type+' mono">'+sign+' '+fmt(t.amount)+'</div>'+
