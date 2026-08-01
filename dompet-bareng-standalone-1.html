@@ -416,6 +416,15 @@
       '<div class="sync-code-box mono" id="codeText">'+esc(syncCode)+'</div>'+
       '<div class="sync-row"><button class="btn gold" id="btnCopyCode">Salin Kode</button>'+
       '<button class="btn ghost" id="btnBackFromCode">Kembali</button></div>'+
+    '</div>'+
+    '<div class="ledger-sheet">'+
+      '<h2>Ganti / Masukkan Kode Lain</h2>'+
+      '<p style="font-size:13px;color:var(--ink-soft);margin:0 0 8px;">Kalau kode saat ini error, tidak ditemukan, atau kamu mau pindah ke buku kas lain, masukkan kode baru di sini.</p>'+
+      '<div class="field"><label>Kode Sinkron Baru</label><input id="newCode" placeholder="tempel kode di sini"></div>'+
+      '<button class="btn full" id="btnSwitchCode" style="margin-top:10px;">Pakai Kode Ini</button>'+
+      '<div style="margin-top:14px;border-top:1px solid rgba(36,48,74,0.15);padding-top:14px;">'+
+      '<button class="btn ghost danger full" id="btnResetCode">Lupakan Kode &amp; Mulai Buku Kas Baru</button>'+
+      '</div>'+
     '</div>';
   }
 
@@ -452,6 +461,12 @@
     if(state.categories.length===0){
       html += '<div class="empty-state">Belum ada kategori budget. Tambah di tab Kategori.</div>';
     } else {
+      let totalBudget = 0, totalSpent = 0;
+      state.categories.forEach(c=>{ totalBudget += Number(c.budget)||0; totalSpent += categorySpent(c.id, m); });
+      html += '<div class="quick-stats" style="margin-top:0;margin-bottom:14px;">';
+      html += '<div class="quick-stat">Total Budget Semua Kategori<br><span class="val mono">'+fmt(totalBudget)+'</span></div>';
+      html += '<div class="quick-stat">Total Terpakai<br><span class="val '+(totalSpent>totalBudget?'expense':'income')+' mono">'+fmt(totalSpent)+'</span></div>';
+      html += '</div>';
       state.categories.forEach(c=>{
         const spent = categorySpent(c.id, m);
         const budget = Number(c.budget)||0;
@@ -512,6 +527,12 @@
     if(state.categories.length===0){
       html += '<div class="empty-state">Belum ada kategori.</div>';
     } else {
+      let totalBudget = 0, totalSpent = 0;
+      state.categories.forEach(c=>{ totalBudget += Number(c.budget)||0; totalSpent += categorySpent(c.id, m); });
+      html += '<div class="quick-stats" style="margin-top:0;margin-bottom:14px;">';
+      html += '<div class="quick-stat">Total Budget Semua Kategori<br><span class="val mono">'+fmt(totalBudget)+'</span></div>';
+      html += '<div class="quick-stat">Total Terpakai<br><span class="val '+(totalSpent>totalBudget?'expense':'income')+' mono">'+fmt(totalSpent)+'</span></div>';
+      html += '</div>';
       state.categories.forEach(c=>{
         const spent = categorySpent(c.id, m);
         const budget = Number(c.budget)||0;
@@ -657,6 +678,26 @@
         copyBtn.textContent = 'Tersalin!';
         setTimeout(()=>{ copyBtn.textContent='Salin Kode'; }, 1500);
       }).catch(()=>{ alert('Kode: '+syncCode); });
+    };
+    const switchBtn = document.getElementById('btnSwitchCode');
+    if(switchBtn) switchBtn.onclick = async ()=>{
+      const code = document.getElementById('newCode').value.trim();
+      if(!code){ alert('Masukkan kode dulu'); return; }
+      syncCode = code;
+      safeStorage.set(LS_CODE_KEY, code);
+      showCodePanel = false;
+      dataLoaded = false;
+      await loadFromRemote(false);
+    };
+    const resetBtn = document.getElementById('btnResetCode');
+    if(resetBtn) resetBtn.onclick = ()=>{
+      if(!confirm('Yakin? Ini cuma melupakan kode di HP ini, data di server tidak terhapus.')) return;
+      syncCode = null;
+      safeStorage.set(LS_CODE_KEY, '');
+      state = { wallets:[], categories:[], transactions:[] };
+      statusMsg = null;
+      showCodePanel = false;
+      render();
     };
 
     const addWalletBtn = document.getElementById('addWalletBtn');
