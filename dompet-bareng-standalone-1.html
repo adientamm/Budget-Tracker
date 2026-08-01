@@ -240,6 +240,10 @@
   try{ localStorage.getItem('__test__'); } catch(e){ storageBlocked = true; }
   let currentTab = 'dashboard';
   let txTypeDraft = 'expense';
+  let editWalletId = null;
+  let editCatId = null;
+  let editTxId = null;
+  let editTxType = null;
   let statusMsg = null; // {type:'info'|'error'|'offline', text}
   let dataLoaded = false;
   let saving = false;
@@ -470,12 +474,14 @@
       state.categories.forEach(c=>{
         const spent = categorySpent(c.id, m);
         const budget = Number(c.budget)||0;
+        const sisa = budget - spent;
         const pct = budget>0 ? Math.min(100, (spent/budget)*100) : 0;
         const over = budget>0 && spent>budget;
         const warn = !over && budget>0 && spent/budget>=0.8;
         html += '<div class="cat-row"><div class="cat-top"><span class="cat-name">'+esc(c.name)+'</span>';
         html += '<span class="cat-figures mono"><b>'+fmt(spent)+'</b> / '+fmt(budget)+'</span></div>';
-        html += '<div class="bar-track"><div class="bar-fill '+(over?'over':warn?'warn':'')+'" style="width:'+pct+'%"></div></div></div>';
+        html += '<div class="bar-track"><div class="bar-fill '+(over?'over':warn?'warn':'')+'" style="width:'+pct+'%"></div></div>';
+        html += '<div style="margin-top:6px;font-size:12.5px;color:var(--ink-soft);">Sisa: <span class="mono" style="font-weight:600;color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span></div></div>';
       });
     }
     html += '</div>';
@@ -501,12 +507,22 @@
     } else {
       html += '<div class="wallet-grid">';
       state.wallets.forEach(w=>{
-        const bal = walletBalance(w.id);
-        html += '<div class="wallet-card"><div class="wallet-badge">'+(w.name[0]||'?').toUpperCase()+'</div>';
-        html += '<div class="wallet-name">'+esc(w.name)+'</div>';
-        html += '<div class="wallet-type">'+esc(w.type)+'</div>';
-        html += '<div class="wallet-balance '+(bal<0?'expense':'')+'">'+fmt(bal)+'</div>';
-        html += '<div class="wallet-actions"><button class="btn ghost danger small" data-del-wallet="'+w.id+'">Hapus</button></div></div>';
+        if(w.id===editWalletId){
+          html += '<div class="wallet-card">';
+          html += '<div class="field" style="margin-bottom:8px;"><label>Nama</label><input id="ewName_'+w.id+'" value="'+esc(w.name)+'"></div>';
+          html += '<div class="field" style="margin-bottom:8px;"><label>Jenis</label><select id="ewType_'+w.id+'">'+
+            ['Cash','Bank','E-Wallet','Tabungan','Lainnya'].map(t=>'<option'+(t===w.type?' selected':'')+'>'+t+'</option>').join('')+'</select></div>';
+          html += '<div class="field" style="margin-bottom:10px;"><label>Saldo Awal</label><input id="ewStart_'+w.id+'" type="number" value="'+(w.startBalance||0)+'"></div>';
+          html += '<div style="display:flex;gap:8px;"><button class="btn gold small" data-save-wallet="'+w.id+'">Simpan</button><button class="btn ghost small" data-cancel-edit-wallet="1">Batal</button></div>';
+          html += '</div>';
+        } else {
+          const bal = walletBalance(w.id);
+          html += '<div class="wallet-card"><div class="wallet-badge">'+(w.name[0]||'?').toUpperCase()+'</div>';
+          html += '<div class="wallet-name">'+esc(w.name)+'</div>';
+          html += '<div class="wallet-type">'+esc(w.type)+'</div>';
+          html += '<div class="wallet-balance '+(bal<0?'expense':'')+'">'+fmt(bal)+'</div>';
+          html += '<div class="wallet-actions"><button class="btn ghost small" data-edit-wallet="'+w.id+'">Edit</button><button class="btn ghost danger small" data-del-wallet="'+w.id+'">Hapus</button></div></div>';
+        }
       });
       html += '</div>';
     }
@@ -534,15 +550,25 @@
       html += '<div class="quick-stat">Total Terpakai<br><span class="val '+(totalSpent>totalBudget?'expense':'income')+' mono">'+fmt(totalSpent)+'</span></div>';
       html += '</div>';
       state.categories.forEach(c=>{
+        if(c.id===editCatId){
+          html += '<div class="cat-row">';
+          html += '<div class="field" style="margin-bottom:8px;"><label>Nama Kategori</label><input id="ecName_'+c.id+'" value="'+esc(c.name)+'"></div>';
+          html += '<div class="field" style="margin-bottom:10px;"><label>Budget per Bulan</label><input id="ecBudget_'+c.id+'" type="number" value="'+(c.budget||0)+'"></div>';
+          html += '<div style="display:flex;gap:8px;"><button class="btn gold small" data-save-cat="'+c.id+'">Simpan</button><button class="btn ghost small" data-cancel-edit-cat="1">Batal</button></div>';
+          html += '</div>';
+          return;
+        }
         const spent = categorySpent(c.id, m);
         const budget = Number(c.budget)||0;
+        const sisa = budget - spent;
         const pct = budget>0 ? Math.min(100,(spent/budget)*100) : 0;
         const over = budget>0 && spent>budget;
         const warn = !over && budget>0 && spent/budget>=0.8;
         html += '<div class="cat-row"><div class="cat-top"><span class="cat-name">'+esc(c.name)+'</span>';
         html += '<span class="cat-figures mono"><b>'+fmt(spent)+'</b> / '+fmt(budget)+'</span></div>';
         html += '<div class="bar-track"><div class="bar-fill '+(over?'over':warn?'warn':'')+'" style="width:'+pct+'%"></div></div>';
-        html += '<div style="margin-top:8px"><button class="btn ghost danger small" data-del-cat="'+c.id+'">Hapus Kategori</button></div></div>';
+        html += '<div style="margin-top:6px;font-size:12.5px;color:var(--ink-soft);">Sisa: <span class="mono" style="font-weight:600;color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span></div>';
+        html += '<div style="margin-top:8px;display:flex;gap:8px;"><button class="btn ghost small" data-edit-cat="'+c.id+'">Edit</button><button class="btn ghost danger small" data-del-cat="'+c.id+'">Hapus</button></div></div>';
       });
     }
     html += '</div>';
@@ -589,6 +615,9 @@
   function renderTxList(list){
     if(list.length===0) return '<div class="empty-state">Belum ada transaksi.</div>';
     return list.map(t=>{
+      if(t.id===editTxId){
+        return renderTxEditForm(t);
+      }
       const sign = t.type==='income' ? '+' : t.type==='expense' ? '-' : '⇄';
       const dateStr = new Date(t.date+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
       let metaLine = dateStr + ' · ' + walletLabel(t.walletId);
@@ -598,8 +627,34 @@
         '<div class="tx-meta">'+metaLine+'</div></div>'+
         '<div style="display:flex;align-items:center;gap:6px">'+
         '<div class="tx-amount '+t.type+' mono">'+sign+' '+fmt(t.amount)+'</div>'+
+        '<button class="tx-del" data-edit-tx="'+t.id+'" title="Edit" style="font-size:14px;">✎</button>'+
         '<button class="tx-del" data-del-tx="'+t.id+'" title="Hapus">✕</button></div></div>';
     }).join('');
+  }
+
+  function renderTxEditForm(t){
+    let html = '<div class="tx-item" style="flex-direction:column;align-items:stretch;">';
+    html += '<div class="type-toggle" style="margin-bottom:10px;">';
+    ['expense','income','transfer'].forEach(ty=>{
+      const label = ty==='expense'?'Pengeluaran':ty==='income'?'Pemasukan':'Transfer';
+      html += '<button data-edit-type="'+ty+'" class="'+(editTxType===ty?'active '+ty:'')+'">'+label+'</button>';
+    });
+    html += '</div>';
+    html += '<div class="form-grid">';
+    html += field('Jumlah', '<input id="etAmount" type="number" value="'+t.amount+'">');
+    html += field('Tanggal', '<input id="etDate" type="date" value="'+t.date+'">');
+    html += field(editTxType==='transfer' ? 'Dari Dompet' : 'Dompet', '<select id="etWallet">'+state.wallets.map(w=>'<option value="'+w.id+'"'+(w.id===t.walletId?' selected':'')+'>'+esc(w.name)+'</option>').join('')+'</select>');
+    if(editTxType==='transfer'){
+      html += field('Ke Dompet', '<select id="etToWallet">'+state.wallets.map(w=>'<option value="'+w.id+'"'+(w.id===t.toWalletId?' selected':'')+'>'+esc(w.name)+'</option>').join('')+'</select>');
+    }
+    if(editTxType==='expense'){
+      html += field('Kategori', '<select id="etCategory"><option value="">- Tanpa kategori -</option>'+state.categories.map(c=>'<option value="'+c.id+'"'+(c.id===t.categoryId?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select>');
+    }
+    html += field('Catatan', '<input id="etNote" value="'+esc(t.note||'')+'">', 'span2');
+    html += '</div>';
+    html += '<div style="display:flex;gap:8px;"><button class="btn gold small" data-save-tx="'+t.id+'">Simpan</button><button class="btn ghost small" data-cancel-edit-tx="1">Batal</button></div>';
+    html += '</div>';
+    return html;
   }
 
   function field(labelText, inputHtml, span){
@@ -718,6 +773,26 @@
         await persist();
       };
     });
+    document.querySelectorAll('[data-edit-wallet]').forEach(b=>{
+      b.onclick = ()=>{ editWalletId = b.dataset.editWallet; render(); };
+    });
+    document.querySelectorAll('[data-cancel-edit-wallet]').forEach(b=>{
+      b.onclick = ()=>{ editWalletId = null; render(); };
+    });
+    document.querySelectorAll('[data-save-wallet]').forEach(b=>{
+      b.onclick = async ()=>{
+        const id = b.dataset.saveWallet;
+        const w = state.wallets.find(x=>x.id===id);
+        const name = document.getElementById('ewName_'+id).value.trim();
+        if(!name){ alert('Nama dompet tidak boleh kosong'); return; }
+        w.name = name;
+        w.type = document.getElementById('ewType_'+id).value;
+        w.startBalance = Number(document.getElementById('ewStart_'+id).value)||0;
+        editWalletId = null;
+        render();
+        await persist();
+      };
+    });
 
     const addCatBtn = document.getElementById('addCatBtn');
     if(addCatBtn) addCatBtn.onclick = async ()=>{
@@ -732,6 +807,25 @@
       b.onclick = async ()=>{
         if(!confirm('Hapus kategori ini?')) return;
         state.categories = state.categories.filter(c=>c.id!==b.dataset.delCat);
+        render();
+        await persist();
+      };
+    });
+    document.querySelectorAll('[data-edit-cat]').forEach(b=>{
+      b.onclick = ()=>{ editCatId = b.dataset.editCat; render(); };
+    });
+    document.querySelectorAll('[data-cancel-edit-cat]').forEach(b=>{
+      b.onclick = ()=>{ editCatId = null; render(); };
+    });
+    document.querySelectorAll('[data-save-cat]').forEach(b=>{
+      b.onclick = async ()=>{
+        const id = b.dataset.saveCat;
+        const c = state.categories.find(x=>x.id===id);
+        const name = document.getElementById('ecName_'+id).value.trim();
+        if(!name){ alert('Nama kategori tidak boleh kosong'); return; }
+        c.name = name;
+        c.budget = Number(document.getElementById('ecBudget_'+id).value)||0;
+        editCatId = null;
         render();
         await persist();
       };
@@ -767,6 +861,49 @@
         await persist();
       };
     });
+    document.querySelectorAll('[data-edit-tx]').forEach(b=>{
+      b.onclick = ()=>{
+        const id = b.dataset.editTx;
+        const t = state.transactions.find(x=>x.id===id);
+        editTxId = id;
+        editTxType = t.type;
+        render();
+      };
+    });
+    document.querySelectorAll('[data-cancel-edit-tx]').forEach(b=>{
+      b.onclick = ()=>{ editTxId = null; editTxType = null; render(); };
+    });
+    document.querySelectorAll('[data-edit-type]').forEach(b=>{
+      b.onclick = ()=>{ editTxType = b.dataset.editType; render(); };
+    });
+    document.querySelectorAll('[data-save-tx]').forEach(b=>{
+      b.onclick = async ()=>{
+        const id = b.dataset.saveTx;
+        const t = state.transactions.find(x=>x.id===id);
+        const amount = Number(document.getElementById('etAmount').value);
+        if(!amount || amount<=0){ alert('Jumlah harus lebih dari 0'); return; }
+        t.type = editTxType;
+        t.amount = amount;
+        t.date = document.getElementById('etDate').value || todayStr();
+        t.walletId = document.getElementById('etWallet').value;
+        t.note = document.getElementById('etNote').value.trim();
+        if(editTxType==='transfer'){
+          t.toWalletId = document.getElementById('etToWallet').value;
+          if(t.toWalletId===t.walletId){ alert('Dompet asal dan tujuan tidak boleh sama'); return; }
+          delete t.categoryId;
+        } else if(editTxType==='expense'){
+          t.categoryId = document.getElementById('etCategory').value || null;
+          delete t.toWalletId;
+        } else {
+          delete t.categoryId;
+          delete t.toWalletId;
+        }
+        editTxId = null;
+        editTxType = null;
+        render();
+        await persist();
+      };
+    });
 
     const fw = document.getElementById('filterWallet');
     const ft = document.getElementById('filterType');
@@ -782,6 +919,15 @@
             state.transactions = state.transactions.filter(t=>t.id!==b.dataset.delTx);
             render();
             await persist();
+          };
+        });
+        document.querySelectorAll('[data-edit-tx]').forEach(b=>{
+          b.onclick = ()=>{
+            const id = b.dataset.editTx;
+            const t = state.transactions.find(x=>x.id===id);
+            editTxId = id;
+            editTxType = t.type;
+            render();
           };
         });
       };
