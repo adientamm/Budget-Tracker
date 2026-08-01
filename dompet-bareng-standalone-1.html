@@ -33,6 +33,12 @@
   }
   .mono{font-family:'IBM Plex Mono', monospace;}
 
+  .header-compact{ padding:16px 20px 10px; max-width:880px; margin:0 auto; }
+  .header-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .app-title{ font-size:22px; font-weight:700; margin:0; letter-spacing:-0.5px; }
+  .header-actions{ display:flex; gap:8px; flex-shrink:0; }
+  .header-actions .btn{ padding:6px 12px; font-size:12px; }
+
   header{ padding:28px 20px 18px; max-width:880px; margin:0 auto; position:relative; }
   .stamp{
     position:absolute; top:22px; right:20px;
@@ -245,6 +251,17 @@
   }
   .divider-or::before{ left:0; } .divider-or::after{ right:0; }
 
+  .fab-add{
+    display:none;
+    position:fixed; right:20px; bottom:24px; z-index:150;
+    width:56px; height:56px; border-radius:50%;
+    background:var(--gold-dark); color:#fff; border:none;
+    font-size:28px; line-height:1; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 4px 14px rgba(0,0,0,0.3);
+    cursor:pointer;
+  }
+  .fab-add:active{ transform:scale(0.94); }
+
   .toast{
     position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px);
     background:var(--ink); color:#fff; font-size:13px; font-weight:600;
@@ -272,6 +289,7 @@
   <div class="loading-spin">Membuka buku kas...</div>
 </div>
 <div class="toast" id="toast"></div>
+<button class="fab-add" id="fabAdd" title="Tambah transaksi">+</button>
 
 <script>
 (function(){
@@ -475,7 +493,7 @@
   function renderSetup(){
     return '<div class="setup-wrap">'+
       '<header style="padding:20px 0 10px;position:static;">'+
-        '<h1>Dompet Bareng</h1>'+
+        '<h1>Our Money</h1>'+
         '<p class="subtitle">Buku kas keuangan berdua, bisa dibuka dari HP kamu &amp; Pi.</p>'+
       '</header>'+
       '<div class="ledger-sheet">'+
@@ -499,14 +517,13 @@
   }
 
   function renderHeader(){
-    return '<header>'+
-      '<div class="stamp">BUKU<br>KAS<br>BERSAMA</div>'+
-      '<h1>Dompet Bareng</h1>'+
-      '<p class="subtitle">Catatan keuangan Tata &amp; Pi</p>'+
-      '<p class="ledger-no mono">'+new Date().toLocaleDateString('id-ID',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+'</p>'+
-      '<div class="header-actions">'+
-        '<button class="btn ghost small" id="btnSync">'+(saving?'Menyimpan...':'🔄 Sinkron')+'</button>'+
-        '<button class="btn ghost small" id="btnShowCode">Kode Sinkron</button>'+
+    return '<header class="header-compact">'+
+      '<div class="header-row">'+
+        '<h1 class="app-title">Our Money</h1>'+
+        '<div class="header-actions">'+
+          '<button class="btn ghost small" id="btnSync">'+(saving?'...':'🔄')+'</button>'+
+          '<button class="btn ghost small" id="btnShowCode">Kode</button>'+
+        '</div>'+
       '</div>'+
     '</header>'+
     '<nav class="tabs">'+
@@ -813,15 +830,24 @@
   // ============ MAIN RENDER ============
   let showCodePanel = false;
 
+  function updateFabVisibility(){
+    const fab = document.getElementById('fabAdd');
+    if(!fab) return;
+    const shouldShow = !!syncCode && dataLoaded && !showCodePanel && state.wallets.length>0;
+    fab.style.display = shouldShow ? 'flex' : 'none';
+  }
+
   function render(){
     const root = document.getElementById('root');
     if(!syncCode){
       root.innerHTML = renderSetup();
       attachSetupHandlers();
+      updateFabVisibility();
       return;
     }
     if(!dataLoaded){
       root.innerHTML = '<div class="loading-spin">Mengambil data dari server...</div>';
+      updateFabVisibility();
       return;
     }
     let html = renderHeader();
@@ -841,6 +867,7 @@
     html += '</main>';
     root.innerHTML = html;
     attachAppHandlers();
+    updateFabVisibility();
   }
 
   function attachThousandFormat(id){
@@ -1128,6 +1155,14 @@
       loadFromRemote(false);
     }
   });
+
+  const fabEl = document.getElementById('fabAdd');
+  if(fabEl) fabEl.onclick = ()=>{
+    currentTab = 'transactions';
+    showCodePanel = false;
+    render();
+    window.scrollTo({top:0, behavior:'smooth'});
+  };
 
   // ============ INIT ============
   try{
