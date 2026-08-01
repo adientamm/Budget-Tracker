@@ -47,6 +47,8 @@
   .ledger-no{ font-size:11px; color:var(--ink-soft); margin-top:6px; letter-spacing:1px; }
 
   nav.tabs{
+    position:sticky; top:0; z-index:50; background:var(--paper);
+    box-shadow:0 2px 6px rgba(36,48,74,0.08);
     max-width:880px; margin:0 auto; padding:0 20px; display:flex; gap:4px;
     border-bottom:2px solid var(--ink); overflow-x:auto;
   }
@@ -208,6 +210,13 @@
   .tx-item.compact .tx-amount{ font-size:13px; }
   .tx-item.compact .tx-del{ font-size:13px; padding:2px 6px; }
 
+  .month-group-label{
+    font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:1px;
+    color:var(--gold-dark); margin:16px 0 8px; padding-bottom:4px;
+    border-bottom:1.5px solid rgba(169,129,47,0.3);
+  }
+  .month-group-label:first-child{ margin-top:0; }
+
   .empty-state{ text-align:center; padding:30px 10px; color:var(--ink-soft); font-size:13.5px; }
   .filter-row{ display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
   .filter-row select{ flex:1; min-width:120px; }
@@ -236,6 +245,15 @@
   }
   .divider-or::before{ left:0; } .divider-or::after{ right:0; }
 
+  .toast{
+    position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px);
+    background:var(--ink); color:#fff; font-size:13px; font-weight:600;
+    padding:10px 18px; border-radius:20px; box-shadow:0 4px 16px rgba(0,0,0,0.25);
+    opacity:0; pointer-events:none; transition:opacity .25s ease, transform .25s ease;
+    z-index:200;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
   .setup-wrap{ max-width:480px; margin:40px auto; padding:0 20px; }
 
   .header-actions{ display:flex; gap:8px; margin-top:14px; flex-wrap:wrap; }
@@ -253,6 +271,7 @@
 <div id="root">
   <div class="loading-spin">Membuka buku kas...</div>
 </div>
+<div class="toast" id="toast"></div>
 
 <script>
 (function(){
@@ -286,6 +305,19 @@
   let editTxId = null;
   let editTxType = null;
   let expandedCatId = null;
+  let selectedMonth = null; // diisi 'YYYY-MM', null berarti bulan berjalan
+
+  function getSelectedMonth(){ return selectedMonth || todayStr().slice(0,7); }
+  function shiftMonth(delta){
+    const cur = getSelectedMonth();
+    const [y,mo] = cur.split('-').map(Number);
+    const d = new Date(y, mo-1+delta, 1);
+    selectedMonth = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    render();
+  }
+  function monthLabel(m){
+    return new Date(m+'-01').toLocaleDateString('id-ID',{month:'long', year:'numeric'});
+  }
   let statusMsg = null; // {type:'info'|'error'|'offline', text}
   let dataLoaded = false;
   let saving = false;
@@ -366,6 +398,16 @@
     render();
   }
 
+  let toastTimer = null;
+  function showToast(msg){
+    const el = document.getElementById('toast');
+    if(!el) return;
+    el.textContent = msg;
+    el.classList.add('show');
+    if(toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>{ el.classList.remove('show'); }, 1800);
+  }
+
   async function persist(){
     cacheLocally();
     saving = true;
@@ -373,6 +415,7 @@
     try{
       await pushRemote(syncCode, state);
       statusMsg = null;
+      showToast('✓ Tersimpan');
     } catch(e){
       statusMsg = {type:'offline', text:'Perubahan tersimpan di HP ini tapi belum berhasil sinkron ke server. Coba tombol Sinkron ulang.'};
     }
@@ -493,12 +536,26 @@
     '</div>';
   }
 
+  function monthNavBar(){
+    const m = getSelectedMonth();
+    const isCurrent = m === todayStr().slice(0,7);
+    let html = '<div class="ledger-sheet" style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;">';
+    html += '<button class="btn ghost small" data-shift-month="-1">◀</button>';
+    html += '<div style="text-align:center;"><div style="font-weight:700;font-size:14.5px;">'+monthLabel(m)+'</div>';
+    if(!isCurrent) html += '<button class="btn ghost small" data-goto-current="1" style="margin-top:4px;padding:2px 8px;font-size:10.5px;">Kembali ke bulan ini</button>';
+    html += '</div>';
+    html += '<button class="btn ghost small" data-shift-month="1">▶</button>';
+    html += '</div>';
+    return html;
+  }
+
   function renderDashboard(){
-    const m = todayStr().slice(0,7);
+    const m = getSelectedMonth();
     const {income, expense} = monthTotals(m);
     const total = totalBalance();
-    const monthName = new Date(m+'-01').toLocaleDateString('id-ID',{month:'long', year:'numeric'});
+    const monthName = monthLabel(m);
     let html = '';
+    html += monthNavBar();
     html += '<div class="ledger-sheet"><h2>Total Saldo Semua Dompet</h2>';
     html += '<div class="total-box"><div class="total-amount '+(total<0?'negative':'')+'">'+fmt(total)+'</div></div>';
     html += '<div class="quick-stats">';
@@ -546,8 +603,8 @@
     }
     html += '</div>';
 
-    html += '<div class="ledger-sheet no-rule"><h2>Transaksi Terbaru</h2>';
-    html += renderTxList(state.transactions.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).slice(0,6));
+    html += '<div class="ledger-sheet no-rule"><h2>Transaksi — '+monthName+'</h2>';
+    html += renderTxList(state.transactions.filter(t=>monthKey(t.date)===m).slice().sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).slice(0,8));
     html += '</div>';
     return html;
   }
@@ -557,7 +614,7 @@
     html += '<div class="form-grid">';
     html += field('Nama Dompet', '<input id="wName" placeholder="cth. BCA Tata, Cash, GoPay">');
     html += field('Jenis', '<select id="wType"><option>Cash</option><option>Bank</option><option>E-Wallet</option><option>Tabungan</option><option>Lainnya</option></select>');
-    html += field('Saldo Awal', '<input id="wStart" type="number" placeholder="0">');
+    html += field('Saldo Awal', '<input id="wStart" type="text" inputmode="numeric" placeholder="0">');
     html += '<div class="field span2" style="flex-direction:row;align-items:center;gap:8px;">'+
       '<input type="checkbox" id="wIncludeTotal" checked style="width:auto;">'+
       '<label style="text-transform:none;font-size:13px;">Sertakan di Total Saldo Semua Dompet</label></div>';
@@ -575,7 +632,7 @@
           html += '<div class="field" style="margin-bottom:8px;"><label>Nama</label><input id="ewName_'+w.id+'" value="'+esc(w.name)+'"></div>';
           html += '<div class="field" style="margin-bottom:8px;"><label>Jenis</label><select id="ewType_'+w.id+'">'+
             ['Cash','Bank','E-Wallet','Tabungan','Lainnya'].map(t=>'<option'+(t===w.type?' selected':'')+'>'+t+'</option>').join('')+'</select></div>';
-          html += '<div class="field" style="margin-bottom:10px;"><label>Saldo Awal</label><input id="ewStart_'+w.id+'" type="number" value="'+(w.startBalance||0)+'"></div>';
+          html += '<div class="field" style="margin-bottom:10px;"><label>Saldo Awal</label><input id="ewStart_'+w.id+'" type="text" inputmode="numeric" value="'+Number(w.startBalance||0).toLocaleString('id-ID')+'"></div>';
           html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">'+
             '<input type="checkbox" id="ewIncludeTotal_'+w.id+'" '+(w.includeInTotal!==false?'checked':'')+' style="width:auto;">'+
             '<label style="text-transform:none;font-size:12px;">Sertakan di Total Saldo</label></div>';
@@ -598,15 +655,16 @@
   }
 
   function renderCategories(){
-    let html = '<div class="ledger-sheet"><h2>Tambah Kategori Budget</h2>';
+    let html = monthNavBar();
+    html += '<div class="ledger-sheet"><h2>Tambah Kategori Budget</h2>';
     html += '<div class="form-grid">';
     html += field('Nama Kategori', '<input id="cName" placeholder="cth. Makan, Kucing, Cicilan">');
     html += field('Ikon', '<select id="cIcon">'+iconOptions(CAT_ICONS[0])+'</select>');
-    html += field('Budget per Bulan', '<input id="cBudget" type="number" placeholder="0">', 'span2');
+    html += field('Budget per Bulan', '<input id="cBudget" type="text" inputmode="numeric" placeholder="0">', 'span2');
     html += '</div>';
     html += '<button class="btn gold full" id="addCatBtn">+ Tambah Kategori</button></div>';
 
-    const m = todayStr().slice(0,7);
+    const m = getSelectedMonth();
     html += '<div class="ledger-sheet no-rule"><h2>Semua Kategori</h2>';
     if(state.categories.length===0){
       html += '<div class="empty-state">Belum ada kategori.</div>';
@@ -625,7 +683,7 @@
           html += '<div class="cat-row">';
           html += '<div class="field" style="margin-bottom:8px;"><label>Nama Kategori</label><input id="ecName_'+c.id+'" value="'+esc(c.name)+'"></div>';
           html += '<div class="field" style="margin-bottom:8px;"><label>Ikon</label><select id="ecIcon_'+c.id+'">'+iconOptions(c.icon||CAT_ICONS[0])+'</select></div>';
-          html += '<div class="field" style="margin-bottom:10px;"><label>Budget per Bulan</label><input id="ecBudget_'+c.id+'" type="number" value="'+(c.budget||0)+'"></div>';
+          html += '<div class="field" style="margin-bottom:10px;"><label>Budget per Bulan</label><input id="ecBudget_'+c.id+'" type="text" inputmode="numeric" value="'+Number(c.budget||0).toLocaleString('id-ID')+'"></div>';
           html += '<div style="display:flex;gap:8px;"><button class="btn gold small" data-save-cat="'+c.id+'">Simpan</button><button class="btn ghost small" data-cancel-edit-cat="1">Batal</button></div>';
           html += '</div>';
           return;
@@ -651,6 +709,21 @@
     return html;
   }
 
+  function renderGroupedTxList(list){
+    if(list.length===0) return '<div class="empty-state">Belum ada transaksi.</div>';
+    const groups = {};
+    const order = [];
+    list.forEach(t=>{
+      const key = monthKey(t.date);
+      if(!groups[key]){ groups[key]=[]; order.push(key); }
+      groups[key].push(t);
+    });
+    order.sort().reverse();
+    return order.map(key=>{
+      return '<div class="month-group-label">'+monthLabel(key)+'</div>' + renderTxList(groups[key]);
+    }).join('');
+  }
+
   function renderTransactions(){
     let html = '<div class="ledger-sheet"><h2>Catat Transaksi</h2>';
     html += '<div class="type-toggle">';
@@ -666,7 +739,7 @@
     }
 
     html += '<div class="form-grid">';
-    html += field('Jumlah', '<input id="tAmount" type="number" placeholder="0">');
+    html += field('Jumlah', '<input id="tAmount" type="text" inputmode="numeric" placeholder="0">');
     html += field('Tanggal', '<input id="tDate" type="date" value="'+todayStr()+'">');
     html += field(txTypeDraft==='transfer' ? 'Dari Dompet' : 'Dompet', '<select id="tWallet">'+state.wallets.map(w=>'<option value="'+w.id+'">'+esc(w.name)+'</option>').join('')+'</select>');
     if(txTypeDraft==='transfer'){
@@ -684,7 +757,7 @@
     html += '<select id="filterWallet"><option value="">Semua Dompet</option>'+state.wallets.map(w=>'<option value="'+w.id+'">'+esc(w.name)+'</option>').join('')+'</select>';
     html += '<select id="filterType"><option value="">Semua Jenis</option><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option><option value="transfer">Transfer</option></select>';
     html += '</div>';
-    html += '<div id="txListWrap">'+renderTxList(state.transactions.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)))+'</div></div>';
+    html += '<div id="txListWrap">'+renderGroupedTxList(state.transactions.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)))+'</div></div>';
     return html;
   }
 
@@ -717,7 +790,7 @@
     });
     html += '</div>';
     html += '<div class="form-grid">';
-    html += field('Jumlah', '<input id="etAmount" type="number" value="'+t.amount+'">');
+    html += field('Jumlah', '<input id="etAmount" type="text" inputmode="numeric" value="'+Number(t.amount).toLocaleString('id-ID')+'">');
     html += field('Tanggal', '<input id="etDate" type="date" value="'+t.date+'">');
     html += field(editTxType==='transfer' ? 'Dari Dompet' : 'Dompet', '<select id="etWallet">'+state.wallets.map(w=>'<option value="'+w.id+'"'+(w.id===t.walletId?' selected':'')+'>'+esc(w.name)+'</option>').join('')+'</select>');
     if(editTxType==='transfer'){
@@ -770,6 +843,20 @@
     attachAppHandlers();
   }
 
+  function attachThousandFormat(id){
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('input', ()=>{
+      let raw = el.value.replace(/\D/g,'');
+      el.value = raw ? Number(raw).toLocaleString('id-ID') : '';
+    });
+  }
+  function parseAmountInput(id){
+    const el = document.getElementById(id);
+    if(!el) return 0;
+    return Number((el.value||'0').replace(/\D/g,''))||0;
+  }
+
   function attachSetupHandlers(){
     document.getElementById('btnCreate').onclick = async (e)=>{
       e.target.disabled = true; e.target.textContent = 'Membuat...';
@@ -796,6 +883,15 @@
   }
 
   function attachAppHandlers(){
+    document.querySelectorAll('[data-shift-month]').forEach(b=>{
+      b.onclick = ()=> shiftMonth(Number(b.dataset.shiftMonth));
+    });
+    document.querySelectorAll('[data-goto-current]').forEach(b=>{
+      b.onclick = ()=>{ selectedMonth = null; render(); };
+    });
+    ['wStart','cBudget','tAmount','etAmount'].forEach(attachThousandFormat);
+    state.wallets.forEach(w=>attachThousandFormat('ewStart_'+w.id));
+    state.categories.forEach(c=>attachThousandFormat('ecBudget_'+c.id));
     document.querySelectorAll('.tab-btn').forEach(b=>{
       b.onclick = ()=>{ currentTab = b.dataset.tab; showCodePanel=false; render(); };
     });
@@ -835,10 +931,10 @@
     if(addWalletBtn) addWalletBtn.onclick = async ()=>{
       const name = document.getElementById('wName').value.trim();
       const type = document.getElementById('wType').value;
-      const start = document.getElementById('wStart').value || 0;
+      const start = parseAmountInput('wStart');
       const includeInTotal = document.getElementById('wIncludeTotal').checked;
       if(!name){ alert('Nama dompet tidak boleh kosong'); return; }
-      state.wallets.push({id:uid(), name, type, startBalance:Number(start), includeInTotal});
+      state.wallets.push({id:uid(), name, type, startBalance:start, includeInTotal});
       render();
       await persist();
     };
@@ -864,7 +960,7 @@
         if(!name){ alert('Nama dompet tidak boleh kosong'); return; }
         w.name = name;
         w.type = document.getElementById('ewType_'+id).value;
-        w.startBalance = Number(document.getElementById('ewStart_'+id).value)||0;
+        w.startBalance = parseAmountInput('ewStart_'+id);
         w.includeInTotal = document.getElementById('ewIncludeTotal_'+id).checked;
         editWalletId = null;
         render();
@@ -876,9 +972,9 @@
     if(addCatBtn) addCatBtn.onclick = async ()=>{
       const name = document.getElementById('cName').value.trim();
       const icon = document.getElementById('cIcon').value;
-      const budget = document.getElementById('cBudget').value || 0;
+      const budget = parseAmountInput('cBudget');
       if(!name){ alert('Nama kategori tidak boleh kosong'); return; }
-      state.categories.push({id:uid(), name, icon, budget:Number(budget)});
+      state.categories.push({id:uid(), name, icon, budget});
       render();
       await persist();
     };
@@ -912,7 +1008,7 @@
         if(!name){ alert('Nama kategori tidak boleh kosong'); return; }
         c.name = name;
         c.icon = document.getElementById('ecIcon_'+id).value;
-        c.budget = Number(document.getElementById('ecBudget_'+id).value)||0;
+        c.budget = parseAmountInput('ecBudget_'+id);
         editCatId = null;
         render();
         await persist();
@@ -925,7 +1021,7 @@
 
     const addTxBtn = document.getElementById('addTxBtn');
     if(addTxBtn) addTxBtn.onclick = async ()=>{
-      const amount = Number(document.getElementById('tAmount').value);
+      const amount = parseAmountInput('tAmount');
       const date = document.getElementById('tDate').value || todayStr();
       const walletId = document.getElementById('tWallet').value;
       const note = document.getElementById('tNote').value.trim();
@@ -944,6 +1040,7 @@
     };
     document.querySelectorAll('[data-del-tx]').forEach(b=>{
       b.onclick = async ()=>{
+        if(!confirm('Hapus transaksi ini?')) return;
         state.transactions = state.transactions.filter(t=>t.id!==b.dataset.delTx);
         render();
         await persist();
@@ -968,7 +1065,7 @@
       b.onclick = async ()=>{
         const id = b.dataset.saveTx;
         const t = state.transactions.find(x=>x.id===id);
-        const amount = Number(document.getElementById('etAmount').value);
+        const amount = parseAmountInput('etAmount');
         if(!amount || amount<=0){ alert('Jumlah harus lebih dari 0'); return; }
         t.type = editTxType;
         t.amount = amount;
@@ -1001,9 +1098,10 @@
         if(fw.value) list = list.filter(t=>t.walletId===fw.value || t.toWalletId===fw.value);
         if(ft.value) list = list.filter(t=>t.type===ft.value);
         list.sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
-        document.getElementById('txListWrap').innerHTML = renderTxList(list);
+        document.getElementById('txListWrap').innerHTML = renderGroupedTxList(list);
         document.querySelectorAll('[data-del-tx]').forEach(b=>{
           b.onclick = async ()=>{
+            if(!confirm('Hapus transaksi ini?')) return;
             state.transactions = state.transactions.filter(t=>t.id!==b.dataset.delTx);
             render();
             await persist();
