@@ -87,6 +87,23 @@
   .val.income{ color:var(--green); }
   .val.expense{ color:var(--red); }
 
+  .wallet-mini-row{
+    display:flex;
+    gap:10px;
+    overflow-x:auto;
+    padding-bottom:4px;
+  }
+  .wallet-mini{
+    flex:0 0 auto;
+    background:rgba(36,48,74,0.05);
+    border:1px solid rgba(36,48,74,0.12);
+    border-radius:8px;
+    padding:8px 12px;
+    min-width:110px;
+  }
+  .wallet-mini-name{ font-size:11.5px; color:var(--ink-soft); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .wallet-mini-bal{ font-size:14px; font-weight:700; margin-top:2px; white-space:nowrap; }
+
   .wallet-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(190px,1fr)); gap:14px; }
   .wallet-card{
     background:var(--paper-card); border:1px solid rgba(36,48,74,0.12); border-radius:10px;
@@ -443,19 +460,13 @@
     html += '<div class="quick-stats">';
     html += '<div class="quick-stat">Pemasukan '+monthName+'<br><span class="val income mono">'+fmt(income)+'</span></div>';
     html += '<div class="quick-stat">Pengeluaran '+monthName+'<br><span class="val expense mono">'+fmt(expense)+'</span></div>';
-    html += '</div></div>';
-
-    html += '<div class="ledger-sheet"><h2>Saldo per Dompet</h2>';
-    if(state.wallets.length===0){
-      html += '<div class="empty-state">Belum ada dompet. Tambah dulu di tab Dompet.</div>';
-    } else {
-      html += '<div class="wallet-grid">';
+    html += '</div>';
+    if(state.wallets.length>0){
+      html += '<div class="wallet-mini-row" style="margin-top:16px;">';
       state.wallets.forEach(w=>{
         const bal = walletBalance(w.id);
-        html += '<div class="wallet-card"><div class="wallet-badge">'+(w.name[0]||'?').toUpperCase()+'</div>';
-        html += '<div class="wallet-name">'+esc(w.name)+'</div>';
-        html += '<div class="wallet-type">'+esc(w.type)+'</div>';
-        html += '<div class="wallet-balance '+(bal<0?'expense':'')+'">'+fmt(bal)+'</div></div>';
+        html += '<div class="wallet-mini"><div class="wallet-mini-name">'+esc(w.name)+'</div>';
+        html += '<div class="wallet-mini-bal mono '+(bal<0?'expense':'')+'">'+fmt(bal)+'</div></div>';
       });
       html += '</div>';
     }
