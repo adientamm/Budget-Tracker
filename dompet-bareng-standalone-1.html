@@ -298,6 +298,11 @@
   const todayStr = () => new Date().toISOString().slice(0,10);
   const monthKey = (d) => (d || todayStr()).slice(0,7);
   const uid = () => Math.random().toString(36).slice(2,10) + Date.now().toString(36);
+  const CAT_ICONS = ['🍽️','🏠','💰','🐱','🛒','🌐','💡','⛽','🎉','🚗','🏥','📱','🕌','👶','🎓','💳','📦'];
+  function iconOptions(selected){
+    return CAT_ICONS.map(ic=>'<option value="'+ic+'"'+(ic===selected?' selected':'')+'>'+ic+'</option>').join('');
+  }
+
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
   // ============ REMOTE SYNC ============
@@ -516,7 +521,7 @@
         const pct = budget>0 ? Math.min(100, (spent/budget)*100) : 0;
         const over = budget>0 && spent>budget;
         const warn = !over && budget>0 && spent/budget>=0.8;
-        html += '<div class="cat-row"><div class="cat-top"><span class="cat-name">'+esc(c.name)+'</span>';
+        html += '<div class="cat-row"><div class="cat-top"><span class="cat-name">'+(c.icon||CAT_ICONS[0])+' '+esc(c.name)+'</span>';
         html += '<span class="cat-figures mono"><b>'+fmt(spent)+'</b> / '+fmt(budget)+'</span></div>';
         html += '<div class="bar-track"><div class="bar-fill '+(over?'over':warn?'warn':'')+'" style="width:'+pct+'%"></div></div>';
         html += '<div style="margin-top:6px;font-size:12.5px;color:var(--ink-soft);">Sisa: <span class="mono" style="font-weight:600;color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span></div></div>';
@@ -572,7 +577,8 @@
     let html = '<div class="ledger-sheet"><h2>Tambah Kategori Budget</h2>';
     html += '<div class="form-grid">';
     html += field('Nama Kategori', '<input id="cName" placeholder="cth. Makan, Kucing, Cicilan">');
-    html += field('Budget per Bulan', '<input id="cBudget" type="number" placeholder="0">');
+    html += field('Ikon', '<select id="cIcon">'+iconOptions(CAT_ICONS[0])+'</select>');
+    html += field('Budget per Bulan', '<input id="cBudget" type="number" placeholder="0">', 'span2');
     html += '</div>';
     html += '<button class="btn gold full" id="addCatBtn">+ Tambah Kategori</button></div>';
 
@@ -594,6 +600,7 @@
         if(c.id===editCatId){
           html += '<div class="cat-row">';
           html += '<div class="field" style="margin-bottom:8px;"><label>Nama Kategori</label><input id="ecName_'+c.id+'" value="'+esc(c.name)+'"></div>';
+          html += '<div class="field" style="margin-bottom:8px;"><label>Ikon</label><select id="ecIcon_'+c.id+'">'+iconOptions(c.icon||CAT_ICONS[0])+'</select></div>';
           html += '<div class="field" style="margin-bottom:10px;"><label>Budget per Bulan</label><input id="ecBudget_'+c.id+'" type="number" value="'+(c.budget||0)+'"></div>';
           html += '<div style="display:flex;gap:8px;"><button class="btn gold small" data-save-cat="'+c.id+'">Simpan</button><button class="btn ghost small" data-cancel-edit-cat="1">Batal</button></div>';
           html += '</div>';
@@ -605,7 +612,7 @@
         const pct = budget>0 ? Math.min(100,(spent/budget)*100) : 0;
         const over = budget>0 && spent>budget;
         const warn = !over && budget>0 && spent/budget>=0.8;
-        html += '<div class="cat-row"><div class="cat-top"><span class="cat-name">'+esc(c.name)+'</span>';
+        html += '<div class="cat-row"><div class="cat-top"><span class="cat-name">'+(c.icon||CAT_ICONS[0])+' '+esc(c.name)+'</span>';
         html += '<span class="cat-figures mono"><b>'+fmt(spent)+'</b> / '+fmt(budget)+'</span></div>';
         html += '<div class="bar-track"><div class="bar-fill '+(over?'over':warn?'warn':'')+'" style="width:'+pct+'%"></div></div>';
         html += '<div style="margin-top:6px;font-size:12.5px;color:var(--ink-soft);">Sisa: <span class="mono" style="font-weight:600;color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span></div>';
@@ -839,9 +846,10 @@
     const addCatBtn = document.getElementById('addCatBtn');
     if(addCatBtn) addCatBtn.onclick = async ()=>{
       const name = document.getElementById('cName').value.trim();
+      const icon = document.getElementById('cIcon').value;
       const budget = document.getElementById('cBudget').value || 0;
       if(!name){ alert('Nama kategori tidak boleh kosong'); return; }
-      state.categories.push({id:uid(), name, budget:Number(budget)});
+      state.categories.push({id:uid(), name, icon, budget:Number(budget)});
       render();
       await persist();
     };
@@ -866,6 +874,7 @@
         const name = document.getElementById('ecName_'+id).value.trim();
         if(!name){ alert('Nama kategori tidak boleh kosong'); return; }
         c.name = name;
+        c.icon = document.getElementById('ecIcon_'+id).value;
         c.budget = Number(document.getElementById('ecBudget_'+id).value)||0;
         editCatId = null;
         render();
