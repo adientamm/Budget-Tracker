@@ -150,6 +150,8 @@
   .btn.small{ padding:6px 11px; font-size:12px; }
   .btn.full{ width:100%; }
   .btn:disabled{ opacity:0.6; cursor:default; }
+  .btn.ghost:disabled{ opacity:0.3; border-color:var(--ink-soft); color:var(--ink-soft); }
+  .btn.ghost:disabled:hover{ color:var(--ink-soft); border-color:var(--ink-soft); background:none; }
 
   .form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
   .form-grid.single{ grid-template-columns:1fr; }
@@ -172,8 +174,18 @@
   .type-toggle button.active.expense{ background:var(--red); border-color:var(--red); color:#fff; }
   .type-toggle button.active.transfer{ background:var(--gold-dark); border-color:var(--gold-dark); color:#fff; }
 
-  .tx-item{ display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid rgba(36,48,74,0.10); gap:10px; }
-  .tx-item:last-child{ border-bottom:none; }
+  .ledger-sheet.no-rule{ background-image:none; }
+
+  .tx-item{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:12px 14px; gap:10px;
+    background:#fff;
+    border:1px solid rgba(36,48,74,0.10);
+    border-radius:8px;
+    margin-bottom:8px;
+    box-shadow:0 1px 3px rgba(36,48,74,0.06);
+  }
+  .tx-item:last-child{ margin-bottom:0; }
   .tx-left{ display:flex; flex-direction:column; gap:2px; }
   .tx-note{ font-weight:600; font-size:14px; }
   .tx-meta{ font-size:11.5px; color:var(--ink-soft); }
@@ -472,15 +484,17 @@
     }
     html += '</div>';
 
-    html += '<div class="ledger-sheet"><h2>Budget Kategori — '+monthName+'</h2>';
+    html += '<div class="ledger-sheet no-rule"><h2>Budget Kategori — '+monthName+'</h2>';
     if(state.categories.length===0){
       html += '<div class="empty-state">Belum ada kategori budget. Tambah di tab Kategori.</div>';
     } else {
       let totalBudget = 0, totalSpent = 0;
       state.categories.forEach(c=>{ totalBudget += Number(c.budget)||0; totalSpent += categorySpent(c.id, m); });
+      const totalSisa = totalBudget - totalSpent;
       html += '<div class="quick-stats" style="margin-top:0;margin-bottom:14px;">';
-      html += '<div class="quick-stat">Total Budget Semua Kategori<br><span class="val mono">'+fmt(totalBudget)+'</span></div>';
+      html += '<div class="quick-stat">Total Budget<br><span class="val mono">'+fmt(totalBudget)+'</span></div>';
       html += '<div class="quick-stat">Total Terpakai<br><span class="val '+(totalSpent>totalBudget?'expense':'income')+' mono">'+fmt(totalSpent)+'</span></div>';
+      html += '<div class="quick-stat">Total Sisa<br><span class="val mono" style="color:'+(totalSisa<0?'var(--red)':'var(--green)')+'">'+fmt(totalSisa)+'</span></div>';
       html += '</div>';
       state.categories.forEach(c=>{
         const spent = categorySpent(c.id, m);
@@ -497,7 +511,7 @@
     }
     html += '</div>';
 
-    html += '<div class="ledger-sheet"><h2>Transaksi Terbaru</h2>';
+    html += '<div class="ledger-sheet no-rule"><h2>Transaksi Terbaru</h2>';
     html += renderTxList(state.transactions.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).slice(0,6));
     html += '</div>';
     return html;
@@ -550,17 +564,20 @@
     html += '<button class="btn gold full" id="addCatBtn">+ Tambah Kategori</button></div>';
 
     const m = todayStr().slice(0,7);
-    html += '<div class="ledger-sheet"><h2>Semua Kategori</h2>';
+    html += '<div class="ledger-sheet no-rule"><h2>Semua Kategori</h2>';
     if(state.categories.length===0){
       html += '<div class="empty-state">Belum ada kategori.</div>';
     } else {
       let totalBudget = 0, totalSpent = 0;
       state.categories.forEach(c=>{ totalBudget += Number(c.budget)||0; totalSpent += categorySpent(c.id, m); });
+      const totalSisa = totalBudget - totalSpent;
       html += '<div class="quick-stats" style="margin-top:0;margin-bottom:14px;">';
-      html += '<div class="quick-stat">Total Budget Semua Kategori<br><span class="val mono">'+fmt(totalBudget)+'</span></div>';
+      html += '<div class="quick-stat">Total Budget<br><span class="val mono">'+fmt(totalBudget)+'</span></div>';
       html += '<div class="quick-stat">Total Terpakai<br><span class="val '+(totalSpent>totalBudget?'expense':'income')+' mono">'+fmt(totalSpent)+'</span></div>';
+      html += '<div class="quick-stat">Total Sisa<br><span class="val mono" style="color:'+(totalSisa<0?'var(--red)':'var(--green)')+'">'+fmt(totalSisa)+'</span></div>';
       html += '</div>';
-      state.categories.forEach(c=>{
+      html += '<p style="font-size:11.5px;color:var(--ink-soft);margin:0 0 10px;">Pakai ▲▼ buat atur urutan kategori.</p>';
+      state.categories.forEach((c,idx)=>{
         if(c.id===editCatId){
           html += '<div class="cat-row">';
           html += '<div class="field" style="margin-bottom:8px;"><label>Nama Kategori</label><input id="ecName_'+c.id+'" value="'+esc(c.name)+'"></div>';
@@ -579,7 +596,10 @@
         html += '<span class="cat-figures mono"><b>'+fmt(spent)+'</b> / '+fmt(budget)+'</span></div>';
         html += '<div class="bar-track"><div class="bar-fill '+(over?'over':warn?'warn':'')+'" style="width:'+pct+'%"></div></div>';
         html += '<div style="margin-top:6px;font-size:12.5px;color:var(--ink-soft);">Sisa: <span class="mono" style="font-weight:600;color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span></div>';
-        html += '<div style="margin-top:8px;display:flex;gap:8px;"><button class="btn ghost small" data-edit-cat="'+c.id+'">Edit</button><button class="btn ghost danger small" data-del-cat="'+c.id+'">Hapus</button></div></div>';
+        html += '<div style="margin-top:8px;display:flex;gap:8px;align-items:center;">';
+        html += '<button class="btn ghost small" data-move-cat-up="'+c.id+'" '+(idx===0?'disabled':'')+' title="Naik">▲</button>';
+        html += '<button class="btn ghost small" data-move-cat-down="'+c.id+'" '+(idx===state.categories.length-1?'disabled':'')+' title="Turun">▼</button>';
+        html += '<button class="btn ghost small" data-edit-cat="'+c.id+'">Edit</button><button class="btn ghost danger small" data-del-cat="'+c.id+'">Hapus</button></div></div>';
       });
     }
     html += '</div>';
@@ -614,7 +634,7 @@
     html += '</div>';
     html += '<button class="btn gold full" id="addTxBtn">+ Simpan Transaksi</button></div>';
 
-    html += '<div class="ledger-sheet"><h2>Riwayat Transaksi</h2>';
+    html += '<div class="ledger-sheet no-rule"><h2>Riwayat Transaksi</h2>';
     html += '<div class="filter-row">';
     html += '<select id="filterWallet"><option value="">Semua Dompet</option>'+state.wallets.map(w=>'<option value="'+w.id+'">'+esc(w.name)+'</option>').join('')+'</select>';
     html += '<select id="filterType"><option value="">Semua Jenis</option><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option><option value="transfer">Transfer</option></select>';
@@ -824,6 +844,32 @@
     });
     document.querySelectorAll('[data-edit-cat]').forEach(b=>{
       b.onclick = ()=>{ editCatId = b.dataset.editCat; render(); };
+    });
+    document.querySelectorAll('[data-move-cat-up]').forEach(b=>{
+      b.onclick = async ()=>{
+        const id = b.dataset.moveCatUp;
+        const idx = state.categories.findIndex(c=>c.id===id);
+        if(idx>0){
+          const tmp = state.categories[idx-1];
+          state.categories[idx-1] = state.categories[idx];
+          state.categories[idx] = tmp;
+          render();
+          await persist();
+        }
+      };
+    });
+    document.querySelectorAll('[data-move-cat-down]').forEach(b=>{
+      b.onclick = async ()=>{
+        const id = b.dataset.moveCatDown;
+        const idx = state.categories.findIndex(c=>c.id===id);
+        if(idx<state.categories.length-1){
+          const tmp = state.categories[idx+1];
+          state.categories[idx+1] = state.categories[idx];
+          state.categories[idx] = tmp;
+          render();
+          await persist();
+        }
+      };
     });
     document.querySelectorAll('[data-cancel-edit-cat]').forEach(b=>{
       b.onclick = ()=>{ editCatId = null; render(); };
