@@ -8,18 +8,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --paper: #17171A;
-    --paper-card: #232326;
-    --paper-card-alt: #2C2C30;
-    --ink: #F0EEEA;
-    --ink-soft: #9B9894;
+    --paper: #101012;
+    --paper-card: #29292E;
+    --paper-card-alt: #34343B;
+    --ink: #F5F3EF;
+    --ink-soft: #A6A3A0;
     --rule-blue: #3A4048;
     --margin-red: #B8433D;
-    --gold: #D9AE55;
-    --gold-dark: #C99B3B;
-    --green: #5FBE8D;
-    --red: #E8746D;
-    --shadow: rgba(0,0,0,0.45);
+    --gold: #E0B65E;
+    --gold-dark: #D0A246;
+    --green: #67C795;
+    --red: #EF7A72;
+    --shadow: rgba(0,0,0,0.55);
   }
   *{box-sizing:border-box;}
   body{
@@ -72,7 +72,8 @@
 
   .ledger-sheet{
     background:var(--paper-card); border-radius:10px;
-    box-shadow:0 4px 14px var(--shadow), 0 1px 0 rgba(255,255,255,0.4) inset;
+    box-shadow:0 4px 14px var(--shadow);
+    border:1px solid rgba(255,255,255,0.06);
     position:relative; padding:14px 16px; margin-bottom:12px;
   }
   .ledger-sheet h2{
@@ -97,7 +98,7 @@
     gap:8px;
   }
   .wallet-mini{
-    background:rgba(255,255,255,0.05);
+    background:var(--paper-card-alt);
     border:1px solid rgba(255,255,255,0.12);
     border-radius:7px;
     padding:6px 8px;
@@ -108,7 +109,7 @@
 
   .wallet-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:10px; }
   .wallet-card{
-    background:var(--paper-card); border:1px solid rgba(255,255,255,0.12); border-radius:8px;
+    background:var(--paper-card-alt); border:1px solid rgba(255,255,255,0.12); border-radius:8px;
     padding:12px; position:relative; box-shadow:0 3px 10px var(--shadow);
   }
   .wallet-card::before{
@@ -699,7 +700,7 @@
         const pct = budget>0 ? Math.min(100, (spent/budget)*100) : 0;
         const over = budget>0 && spent>budget;
         const warn = !over && budget>0 && spent/budget>=0.8;
-        html += '<div class="cat-row" data-toggle-cat="'+c.id+'" style="cursor:pointer;"><div class="cat-top"><span class="cat-name">'+(c.icon||CAT_ICONS[0])+' '+esc(c.name)+'</span>';
+        html += '<div class="cat-row" data-toggle-cat="'+c.id+'" style="cursor:pointer;"><div class="cat-top"><span class="cat-name">'+categoryIconFor(c)+' '+esc(c.name)+'</span>';
         html += '<span class="cat-figures mono"><b>'+fmt(spent)+'</b> / '+fmt(budget)+'</span></div>';
         html += '<div class="bar-track"><div class="bar-fill '+(over?'over':warn?'warn':'')+'" style="width:'+pct+'%"></div></div>';
         html += '<div style="margin-top:6px;font-size:12.5px;color:var(--ink-soft);">Sisa: <span class="mono" style="font-weight:600;color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span> <span style="float:right;">'+(expandedCatId===c.id?'▲ Tutup':'▼ Lihat transaksi')+'</span></div>';
@@ -788,7 +789,7 @@
         if(c.id===editCatId){
           html += '<div class="cat-row">';
           html += '<div class="field" style="margin-bottom:8px;"><label>Nama Kategori</label><input id="ecName_'+c.id+'" value="'+esc(c.name)+'"></div>';
-          html += '<div class="field" style="margin-bottom:8px;"><label>Ikon</label><select id="ecIcon_'+c.id+'">'+iconOptions(c.icon||CAT_ICONS[0])+'</select></div>';
+          html += '<div class="field" style="margin-bottom:8px;"><label>Ikon</label><select id="ecIcon_'+c.id+'">'+iconOptionscategoryIconFor(c)+'</select></div>';
           html += '<div class="field" style="margin-bottom:10px;"><label>Budget per Bulan</label><input id="ecBudget_'+c.id+'" type="text" inputmode="numeric" value="'+Number(c.budget||0).toLocaleString('id-ID')+'"></div>';
           html += '<div style="display:flex;gap:8px;"><button class="btn gold small" data-save-cat="'+c.id+'">Simpan</button><button class="btn ghost small" data-cancel-edit-cat="1">Batal</button></div>';
           html += '</div>';
@@ -800,7 +801,7 @@
         const pct = budget>0 ? Math.min(100,(spent/budget)*100) : 0;
         const over = budget>0 && spent>budget;
         const warn = !over && budget>0 && spent/budget>=0.8;
-        html += '<div class="cat-row"><div class="cat-top"><span class="cat-name">'+(c.icon||CAT_ICONS[0])+' '+esc(c.name)+'</span>';
+        html += '<div class="cat-row"><div class="cat-top"><span class="cat-name">'+categoryIconFor(c)+' '+esc(c.name)+'</span>';
         html += '<span class="cat-figures mono"><b>'+fmt(spent)+'</b> / '+fmt(budget)+'</span></div>';
         html += '<div class="bar-track"><div class="bar-fill '+(over?'over':warn?'warn':'')+'" style="width:'+pct+'%"></div></div>';
         html += '<div style="margin-top:6px;font-size:12.5px;color:var(--ink-soft);">Sisa: <span class="mono" style="font-weight:600;color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span></div>';
@@ -898,12 +899,17 @@
     return html;
   }
 
+  function categoryIconFor(c){
+    if(!c) return '📦';
+    return c.icon || guessCategoryIcon(c.name);
+  }
+
   function txIcon(t){
     if(t.type==='income') return '💰';
     if(t.type==='transfer') return '🔄';
     if(t.categoryId){
       const c = state.categories.find(x=>x.id===t.categoryId);
-      if(c && c.icon) return c.icon;
+      if(c) return categoryIconFor(c);
     }
     return '📝';
   }
