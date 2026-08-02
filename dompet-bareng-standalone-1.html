@@ -189,29 +189,39 @@
   .ledger-sheet.no-rule{ background-image:none; }
 
   .tx-item{
-    display:flex; justify-content:space-between; align-items:center;
-    padding:9px 11px; gap:8px;
+    display:flex; align-items:center;
+    padding:10px 12px; gap:10px;
     background:#fff;
     border:1px solid rgba(36,48,74,0.10);
-    border-radius:7px;
-    margin-bottom:6px;
+    border-radius:9px;
+    margin-bottom:7px;
     box-shadow:0 1px 3px rgba(36,48,74,0.06);
   }
   .tx-item:last-child{ margin-bottom:0; }
-  .tx-left{ display:flex; flex-direction:column; gap:1px; }
-  .tx-note{ font-weight:600; font-size:14px; }
-  .tx-meta{ font-size:11.5px; color:var(--ink-soft); }
-  .tx-amount{ font-weight:700; font-size:13.5px; white-space:nowrap; }
+  .tx-icon{
+    flex:0 0 auto; width:38px; height:38px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px; background:rgba(36,48,74,0.07);
+  }
+  .tx-icon.expense{ background:rgba(184,67,61,0.14); }
+  .tx-icon.income{ background:rgba(63,118,87,0.16); }
+  .tx-icon.transfer{ background:rgba(140,106,31,0.16); }
+  .tx-left{ display:flex; flex-direction:column; gap:1px; flex:1; min-width:0; }
+  .tx-note{ font-weight:700; font-size:15.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .tx-meta{ font-size:12px; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .tx-right{ display:flex; align-items:center; gap:4px; flex:0 0 auto; }
+  .tx-amount{ font-weight:700; font-size:16px; white-space:nowrap; }
   .tx-amount.income{ color:var(--green); }
   .tx-amount.expense{ color:var(--red); }
   .tx-amount.transfer{ color:var(--gold-dark); }
   .tx-del{ background:none;border:none;color:var(--ink-soft); font-size:15px;padding:3px 6px;border-radius:5px; }
   .tx-del:hover{ color:var(--red); background:rgba(184,67,61,0.1); }
 
-  .tx-item.compact{ padding:7px 9px; margin-bottom:5px; gap:6px; }
-  .tx-item.compact .tx-note{ font-size:13px; }
-  .tx-item.compact .tx-meta{ font-size:10.5px; }
-  .tx-item.compact .tx-amount{ font-size:12px; }
+  .tx-item.compact{ padding:8px 10px; margin-bottom:6px; gap:8px; }
+  .tx-item.compact .tx-icon{ width:30px; height:30px; font-size:14px; }
+  .tx-item.compact .tx-note{ font-size:13.5px; }
+  .tx-item.compact .tx-meta{ font-size:11px; }
+  .tx-item.compact .tx-amount{ font-size:13.5px; }
   .tx-item.compact .tx-del{ font-size:12px; padding:2px 5px; }
 
   .month-group-label{
@@ -251,10 +261,10 @@
 
   .fab-add{
     display:none;
-    position:fixed; right:20px; bottom:24px; z-index:150;
+    position:fixed; right:18px; bottom:90px; z-index:150;
     width:56px; height:56px; border-radius:50%;
     background:var(--gold-dark); color:#fff; border:none;
-    font-size:28px; line-height:1; display:flex; align-items:center; justify-content:center;
+    font-size:28px; line-height:1; align-items:center; justify-content:center;
     box-shadow:0 4px 14px rgba(0,0,0,0.3);
     cursor:pointer;
   }
@@ -797,6 +807,16 @@
     return html;
   }
 
+  function txIcon(t){
+    if(t.type==='income') return '💰';
+    if(t.type==='transfer') return '🔄';
+    if(t.categoryId){
+      const c = state.categories.find(x=>x.id===t.categoryId);
+      if(c && c.icon) return c.icon;
+    }
+    return '📝';
+  }
+
   function renderTxList(list, compact){
     if(list.length===0) return '<div class="empty-state">Belum ada transaksi.</div>';
     return list.map(t=>{
@@ -804,13 +824,19 @@
         return renderTxEditForm(t);
       }
       const sign = t.type==='income' ? '+' : t.type==='expense' ? '-' : '⇄';
-      const dateStr = new Date(t.date+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
-      let metaLine = dateStr + (t.time ? ' '+t.time : '') + ' · ' + walletLabel(t.walletId);
-      if(t.type==='transfer') metaLine += ' → ' + walletLabel(t.toWalletId);
-      if(t.type==='expense' && t.categoryId && !compact) metaLine += ' · ' + catLabel(t.categoryId);
-      return '<div class="tx-item'+(compact?' compact':'')+'"><div class="tx-left"><div class="tx-note">'+esc(t.note || (t.type==='transfer'?'Transfer antar dompet':'(tanpa catatan)'))+'</div>'+
+      const dateStr = new Date(t.date+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'short'});
+      const catName = (t.type==='expense' && t.categoryId) ? catLabel(t.categoryId) : null;
+      const hasNote = t.note && t.note.trim();
+      const title = hasNote ? t.note : (catName || (t.type==='income' ? 'Pemasukan' : t.type==='transfer' ? 'Transfer' : '(tanpa catatan)'));
+      let metaParts = [dateStr + (t.time ? ' '+t.time : ''), walletLabel(t.walletId)];
+      if(t.type==='transfer') metaParts[1] += ' → ' + walletLabel(t.toWalletId);
+      if(!compact && catName && hasNote) metaParts.push(catName);
+      const metaLine = metaParts.join(' · ');
+      return '<div class="tx-item'+(compact?' compact':'')+'">'+
+        '<div class="tx-icon '+t.type+'">'+txIcon(t)+'</div>'+
+        '<div class="tx-left"><div class="tx-note">'+esc(title)+'</div>'+
         '<div class="tx-meta">'+metaLine+'</div></div>'+
-        '<div style="display:flex;align-items:center;gap:6px">'+
+        '<div class="tx-right">'+
         '<div class="tx-amount '+t.type+' mono">'+sign+' '+fmt(t.amount)+'</div>'+
         '<button class="tx-del" data-edit-tx="'+t.id+'" title="Edit" style="font-size:14px;">✎</button>'+
         '<button class="tx-del" data-del-tx="'+t.id+'" title="Hapus">✕</button></div></div>';
