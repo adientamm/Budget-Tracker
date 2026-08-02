@@ -8,24 +8,24 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --paper: #101012;
-    --paper-card: #29292E;
-    --paper-card-alt: #34343B;
-    --ink: #F5F3EF;
-    --ink-soft: #A6A3A0;
+    --paper: #0E1116;
+    --paper-card: #1A1F27;
+    --paper-card-alt: #232A34;
+    --ink: #E7E9EC;
+    --ink-soft: #88919C;
     --rule-blue: #3A4048;
     --margin-red: #B8433D;
-    --gold: #E0B65E;
-    --gold-dark: #D0A246;
-    --green: #67C795;
-    --red: #EF7A72;
-    --shadow: rgba(0,0,0,0.55);
+    --gold: #BFA25A;
+    --gold-dark: #A88C46;
+    --green: #55A87E;
+    --red: #D17169;
+    --shadow: rgba(0,0,0,0.5);
   }
   *{box-sizing:border-box;}
   body{
     margin:0;
     background:
-      radial-gradient(ellipse at top left, rgba(169,129,47,0.06), transparent 55%),
+      radial-gradient(ellipse at top left, rgba(191,162,90,0.06), transparent 55%),
       var(--paper);
     color:var(--ink);
     font-family:'Space Grotesk', sans-serif;
@@ -206,9 +206,9 @@
     display:flex; align-items:center; justify-content:center;
     font-size:18px; background:rgba(255,255,255,0.07);
   }
-  .tx-icon.expense{ background:rgba(184,67,61,0.14); }
-  .tx-icon.income{ background:rgba(63,118,87,0.16); }
-  .tx-icon.transfer{ background:rgba(140,106,31,0.16); }
+  .tx-icon.expense{ background:rgba(209,113,105,0.16); }
+  .tx-icon.income{ background:rgba(85,168,126,0.18); }
+  .tx-icon.transfer{ background:rgba(191,162,90,0.18); }
   .tx-left{ display:flex; flex-direction:column; gap:1px; flex:1; min-width:0; }
   .tx-note{ font-weight:700; font-size:15.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .tx-meta{ font-size:12px; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -218,7 +218,7 @@
   .tx-amount.expense{ color:var(--red); }
   .tx-amount.transfer{ color:var(--gold-dark); }
   .tx-del{ background:none;border:none;color:var(--ink-soft); font-size:15px;padding:3px 6px;border-radius:5px; }
-  .tx-del:hover{ color:var(--red); background:rgba(184,67,61,0.1); }
+  .tx-del:hover{ color:var(--red); background:rgba(209,113,105,0.1); }
 
   .tx-item.compact{ padding:8px 10px; margin-bottom:6px; gap:8px; }
   .tx-item.compact .tx-icon{ width:30px; height:30px; font-size:14px; }
@@ -230,7 +230,7 @@
   .month-group-label{
     font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px;
     color:var(--gold-dark); margin:12px 0 6px; padding-bottom:3px;
-    border-bottom:1.5px solid rgba(169,129,47,0.3);
+    border-bottom:1.5px solid rgba(191,162,90,0.3);
   }
   .month-group-label:first-child{ margin-top:0; }
 
@@ -241,9 +241,9 @@
   .banner{
     font-size:12.5px; padding:10px 14px; border-radius:8px; margin-bottom:18px; line-height:1.5;
   }
-  .banner.info{ background:rgba(169,129,47,0.12); border:1px solid rgba(169,129,47,0.35); color:var(--gold-dark); }
-  .banner.error{ background:rgba(184,67,61,0.10); border:1px solid rgba(184,67,61,0.35); color:var(--red); }
-  .banner.offline{ background:rgba(91,107,133,0.12); border:1px solid rgba(91,107,133,0.35); color:var(--ink-soft); }
+  .banner.info{ background:rgba(191,162,90,0.12); border:1px solid rgba(191,162,90,0.35); color:var(--gold-dark); }
+  .banner.error{ background:rgba(209,113,105,0.10); border:1px solid rgba(209,113,105,0.35); color:var(--red); }
+  .banner.offline{ background:rgba(136,145,156,0.12); border:1px solid rgba(136,145,156,0.35); color:var(--ink-soft); }
 
   .toolbar-row{ display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:10px; flex-wrap:wrap; }
   .loading-spin{ text-align:center; padding:60px 20px; color:var(--ink-soft); font-size:14px; }
