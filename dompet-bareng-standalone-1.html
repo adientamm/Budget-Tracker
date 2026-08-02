@@ -139,8 +139,13 @@
     box-shadow:0 1px 3px rgba(255,255,255,0.06);
   }
   .cat-row:last-child{ margin-bottom:0; }
-  .cat-top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; flex-wrap:wrap; gap:4px; }
-  .cat-name{ font-weight:600; font-size:15px; }
+  .cat-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; flex-wrap:wrap; gap:4px; }
+  .cat-name{ font-weight:600; font-size:15px; display:flex; align-items:center; gap:9px; }
+  .cat-icon-badge{
+    width:30px; height:30px; border-radius:50%; flex:0 0 auto;
+    background:rgba(191,162,90,0.16);
+    display:flex; align-items:center; justify-content:center; font-size:15px;
+  }
   .cat-figures{ font-size:13px; color:var(--ink-soft); }
   .cat-figures b{ color:var(--ink); }
   .bar-track{ height:7px; background:rgba(255,255,255,0.08); border-radius:5px; overflow:hidden; }
@@ -719,7 +724,7 @@
         const pct = budget>0 ? Math.min(100, (spent/budget)*100) : 0;
         const over = budget>0 && spent>budget;
         const warn = !over && budget>0 && spent/budget>=0.8;
-        html += '<div class="cat-row" data-toggle-cat="'+c.id+'" style="cursor:pointer;"><div class="cat-top"><span class="cat-name">'+categoryIconFor(c)+' '+esc(c.name)+'</span>';
+        html += '<div class="cat-row" data-toggle-cat="'+c.id+'" style="cursor:pointer;"><div class="cat-top"><span class="cat-name"><span class="cat-icon-badge">'+categoryIconFor(c)+'</span>'+esc(c.name)+'</span>';
         html += '<span class="cat-figures mono"><b>'+fmt(spent)+'</b> / '+fmt(budget)+'</span></div>';
         html += '<div class="bar-track"><div class="bar-fill '+(over?'over':warn?'warn':'')+'" style="width:'+pct+'%"></div></div>';
         html += '<div style="margin-top:6px;font-size:12.5px;color:var(--ink-soft);">Sisa: <span class="mono" style="font-weight:600;color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span> <span style="float:right;">'+(expandedCatId===c.id?'▲ Tutup':'▼ Lihat transaksi')+'</span></div>';
@@ -820,7 +825,7 @@
         const pct = budget>0 ? Math.min(100,(spent/budget)*100) : 0;
         const over = budget>0 && spent>budget;
         const warn = !over && budget>0 && spent/budget>=0.8;
-        html += '<div class="cat-row"><div class="cat-top"><span class="cat-name">'+categoryIconFor(c)+' '+esc(c.name)+'</span>';
+        html += '<div class="cat-row"><div class="cat-top"><span class="cat-name"><span class="cat-icon-badge">'+categoryIconFor(c)+'</span>'+esc(c.name)+'</span>';
         html += '<span class="cat-figures mono"><b>'+fmt(spent)+'</b> / '+fmt(budget)+'</span></div>';
         html += '<div class="bar-track"><div class="bar-fill '+(over?'over':warn?'warn':'')+'" style="width:'+pct+'%"></div></div>';
         html += '<div style="margin-top:6px;font-size:12.5px;color:var(--ink-soft);">Sisa: <span class="mono" style="font-weight:600;color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span></div>';
