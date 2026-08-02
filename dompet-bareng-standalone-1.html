@@ -34,6 +34,13 @@
   }
   .mono{font-family:'IBM Plex Mono', monospace;}
 
+  .sticky-top{
+    position:sticky; top:0; z-index:80; background:var(--paper);
+    box-shadow:0 2px 8px rgba(0,0,0,0.25);
+  }
+  .sticky-top-inner{ padding:0 10px; max-width:1100px; margin:0 auto; }
+  .sticky-top-inner .ledger-sheet{ margin-bottom:10px; }
+
   .header-compact{ padding:10px 10px 6px; max-width:1100px; margin:0 auto; }
   .header-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
   .app-title{ font-size:19px; font-weight:700; margin:0; letter-spacing:-0.5px; }
@@ -624,7 +631,7 @@
     return '<svg '+common+'><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/></svg>';
   }
 
-  function renderHeader(){
+  function renderHeaderTop(){
     return '<header class="header-compact">'+
       '<div class="header-row">'+
         '<h1 class="app-title">Our Money</h1>'+
@@ -633,13 +640,14 @@
           '<button class="btn ghost small" id="btnShowCode">Kode</button>'+
         '</div>'+
       '</div>'+
-    '</header>'+
-    '<nav class="tabs">'+
-      ['dashboard','wallets','categories','transactions'].map(t=>{
-        const label = t==='dashboard'?'Ringkasan':t==='wallets'?'Dompet':t==='categories'?'Kategori':'Transaksi';
-        return '<button class="tab-btn'+(currentTab===t?' active':'')+'" data-tab="'+t+'">'+tabIconSvg(t)+label+'</button>';
-      }).join('')+
-    '</nav>';
+    '</header>';
+  }
+
+  function renderTabButtons(){
+    return ['dashboard','wallets','categories','transactions'].map(t=>{
+      const label = t==='dashboard'?'Ringkasan':t==='wallets'?'Dompet':t==='categories'?'Kategori':'Transaksi';
+      return '<button class="tab-btn'+(currentTab===t?' active':'')+'" data-tab="'+t+'">'+tabIconSvg(t)+label+'</button>';
+    }).join('');
   }
 
   function renderCodePanel(){
@@ -695,7 +703,6 @@
     const monthName = monthLabel(m);
     const monthShort = monthLabelShort(m);
     let html = '';
-    html += monthNavBar();
     html += '<div class="ledger-sheet"><h2>Total Saldo Semua Dompet</h2>';
     html += '<div class="total-box"><div class="total-amount '+(total<0?'negative':'')+'">'+fmt(total)+'</div></div>';
     html += '<div class="quick-stats">';
@@ -795,8 +802,7 @@
   }
 
   function renderCategories(){
-    let html = monthNavBar();
-    html += '<div class="ledger-sheet"><h2>Tambah Kategori Budget</h2>';
+    let html = '<div class="ledger-sheet"><h2>Tambah Kategori Budget</h2>';
     html += '<div class="form-grid">';
     html += field('Nama Kategori', '<input id="cName" placeholder="cth. Makan, Kucing, Cicilan">');
     html += field('Ikon', '<select id="cIcon">'+iconOptions(CAT_ICONS[0])+'</select>');
@@ -1026,7 +1032,13 @@
       updateFabVisibility();
       return;
     }
-    let html = renderHeader();
+    let html = '<div class="sticky-top">';
+    html += renderHeaderTop();
+    if(!showCodePanel && (currentTab==='dashboard' || currentTab==='categories')){
+      html += '<div class="sticky-top-inner">'+monthNavBar()+'</div>';
+    }
+    html += '</div>';
+    html += '<nav class="tabs">'+renderTabButtons()+'</nav>';
     html += '<main>';
     if(storageBlocked){
       html += '<div class="banner offline">Browser ini memblokir penyimpanan lokal (biasanya kalau dibuka dari Files/lokal langsung di Safari, atau mode Private). Kode sinkron tidak akan tersimpan otomatis — catat kodenya manual dan masukkan lagi tiap buka app.</div>';
