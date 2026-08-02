@@ -38,7 +38,7 @@
   .header-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
   .app-title{ font-size:19px; font-weight:700; margin:0; letter-spacing:-0.5px; }
   .header-actions{ display:flex; gap:8px; flex-shrink:0; }
-  .header-actions .btn{ padding:6px 12px; font-size:12px; }
+  .header-actions .btn{ padding:6px 12px; font-size:12px; display:inline-flex; align-items:center; justify-content:center; }
 
   header{ padding:28px 10px 18px; max-width:1100px; margin:0 auto; position:relative; }
   .stamp{
@@ -117,8 +117,8 @@
     border-top:2px dashed rgba(255,255,255,0.18);
   }
   .wallet-badge{
-    width:28px;height:28px; border-radius:50%; border:2px solid var(--gold); color:var(--gold-dark);
-    display:flex;align-items:center;justify-content:center; font-weight:700; font-size:12px; margin-bottom:7px;
+    width:32px;height:32px; border-radius:50%; background:rgba(191,162,90,0.16); color:var(--ink);
+    display:flex;align-items:center;justify-content:center; font-size:15px; margin-bottom:7px;
   }
   .wallet-name{ font-weight:600; font-size:15px; margin-bottom:1px;}
   .wallet-type{ font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:7px;}
@@ -533,6 +533,15 @@
   }
 
   // ============ CALCULATIONS ============
+  function walletIcon(type){
+    const t = (type||'').toLowerCase();
+    if(t.includes('cash')) return '💵';
+    if(t.includes('bank')) return '🏦';
+    if(t.includes('e-wallet') || t.includes('ewallet')) return '📱';
+    if(t.includes('tabungan')) return '💰';
+    return '👛';
+  }
+
   function walletBalance(walletId){
     let bal = 0;
     const w = state.wallets.find(x=>x.id===walletId);
@@ -596,7 +605,7 @@
       '<div class="ledger-sheet">'+
         '<h2>Sudah Punya Kode dari Pasangan?</h2>'+
         '<div class="field"><label>Masukkan Kode Sinkron</label><input id="joinCode" placeholder="tempel kode di sini"></div>'+
-        '<button class="btn full" id="btnJoin" style="margin-top:10px;">Gabung ke Buku Kas Ini</button>'+
+        '<button class="btn gold full" id="btnJoin" style="margin-top:10px;">Gabung ke Buku Kas Ini</button>'+
       '</div>'+
     '</div>';
   }
@@ -620,7 +629,7 @@
       '<div class="header-row">'+
         '<h1 class="app-title">Our Money</h1>'+
         '<div class="header-actions">'+
-          '<button class="btn ghost small" id="btnSync">'+(saving?'...':'🔄')+'</button>'+
+          '<button class="btn ghost small" id="btnSync">'+(saving?'...':'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.3 6.4M3 12a9 9 0 0 1 15.3-6.4"/><path d="M21 4v5h-5"/><path d="M3 20v-5h5"/></svg>')+'</button>'+
           '<button class="btn ghost small" id="btnShowCode">Kode</button>'+
         '</div>'+
       '</div>'+
@@ -652,14 +661,14 @@
       '<div style="margin-top:14px;border-top:1px solid rgba(255,255,255,0.15);padding-top:14px;">'+
       '<label style="display:block;margin-bottom:6px;">Import Data dari Cadangan</label>'+
       '<textarea id="importText" placeholder="Tempel teks cadangan di sini" style="height:100px;font-size:11px;"></textarea>'+
-      '<button class="btn full" id="btnImportData" style="margin-top:8px;">Import (Timpa Data Buku Kas Ini)</button>'+
+      '<button class="btn gold full" id="btnImportData" style="margin-top:8px;">Import (Timpa Data Buku Kas Ini)</button>'+
       '</div>'+
     '</div>'+
     '<div class="ledger-sheet">'+
       '<h2>Ganti / Masukkan Kode Lain</h2>'+
       '<p style="font-size:13px;color:var(--ink-soft);margin:0 0 8px;">Kalau kode saat ini error, tidak ditemukan, atau kamu mau pindah ke buku kas lain, masukkan kode baru di sini.</p>'+
       '<div class="field"><label>Kode Sinkron Baru</label><input id="newCode" placeholder="tempel kode di sini"></div>'+
-      '<button class="btn full" id="btnSwitchCode" style="margin-top:10px;">Pakai Kode Ini</button>'+
+      '<button class="btn gold full" id="btnSwitchCode" style="margin-top:10px;">Pakai Kode Ini</button>'+
       '<div style="margin-top:14px;border-top:1px solid rgba(255,255,255,0.15);padding-top:14px;">'+
       '<button class="btn ghost danger full" id="btnResetCode">Lupakan Kode &amp; Mulai Buku Kas Baru</button>'+
       '</div>'+
@@ -772,7 +781,7 @@
         } else {
           const bal = walletBalance(w.id);
           const excluded = w.includeInTotal===false;
-          html += '<div class="wallet-card"><div class="wallet-badge">'+(w.name[0]||'?').toUpperCase()+'</div>';
+          html += '<div class="wallet-card"><div class="wallet-badge">'+walletIcon(w.type)+'</div>';
           html += '<div class="wallet-name">'+esc(w.name)+'</div>';
           html += '<div class="wallet-type">'+esc(w.type)+(excluded?' · di luar total':'')+'</div>';
           html += '<div class="wallet-balance '+(bal<0?'expense':'')+'">'+fmt(bal)+'</div>';
