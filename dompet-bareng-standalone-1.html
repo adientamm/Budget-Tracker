@@ -263,35 +263,47 @@
   .divider-or::before{ left:0; } .divider-or::after{ right:0; }
 
   .tx-modal-backdrop{
-    position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:300;
+    position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:300;
     display:flex; align-items:flex-end; justify-content:center;
+    padding:0 12px calc(12px + env(safe-area-inset-bottom,0px));
   }
   .tx-modal{
-    background:var(--paper-card); width:100%; max-width:480px;
-    border-radius:18px 18px 0 0; overflow:hidden;
-    box-shadow:0 -8px 30px rgba(0,0,0,0.4);
-    animation:slideUp .2s ease;
+    background:var(--paper-card); width:100%; max-width:440px;
+    border-radius:16px; overflow:hidden;
+    border:1px solid rgba(255,255,255,0.08);
+    box-shadow:0 -8px 30px rgba(0,0,0,0.5);
+    animation:slideUp .18s ease;
+    margin-bottom:14px;
   }
-  @keyframes slideUp{ from{ transform:translateY(30px); opacity:0.6; } to{ transform:translateY(0); opacity:1; } }
-  .tx-modal-head{ padding:16px 18px 20px; color:#fff; }
-  .tx-modal-head.expense{ background:var(--red); }
-  .tx-modal-head.income{ background:var(--green); }
-  .tx-modal-head.transfer{ background:var(--gold-dark); }
-  .tx-modal-actions{ display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
-  .tx-modal-actions button{
-    background:rgba(255,255,255,0.2); border:none; color:#fff; width:36px; height:36px;
-    border-radius:50%; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  @keyframes slideUp{ from{ transform:translateY(16px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
+  .tx-modal-top{ display:flex; justify-content:flex-end; padding:10px 10px 0; }
+  .tx-modal-close{
+    background:none; border:none; color:var(--ink-soft); width:30px; height:30px;
+    border-radius:50%; font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center;
   }
-  .tx-modal-actions button:active{ transform:scale(0.92); }
-  .tx-modal-type{ font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; opacity:0.85; }
-  .tx-modal-amount{ font-size:32px; font-weight:700; margin-top:4px; }
-  .tx-modal-date{ font-size:13px; opacity:0.85; margin-top:8px; }
-  .tx-modal-body{ padding:18px; }
-  .tx-modal-row{ display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.08); }
+  .tx-modal-close:active{ background:rgba(255,255,255,0.08); }
+  .tx-modal-head{ padding:0 22px 18px; text-align:center; }
+  .tx-modal-icon{
+    width:52px; height:52px; border-radius:50%; margin:0 auto 12px;
+    display:flex; align-items:center; justify-content:center; font-size:24px;
+  }
+  .tx-modal-icon.expense{ background:rgba(209,113,105,0.16); }
+  .tx-modal-icon.income{ background:rgba(85,168,126,0.18); }
+  .tx-modal-icon.transfer{ background:rgba(191,162,90,0.18); }
+  .tx-modal-title{ font-size:15px; font-weight:700; margin-bottom:4px; }
+  .tx-modal-amount{ font-size:28px; font-weight:700; }
+  .tx-modal-amount.expense{ color:var(--red); }
+  .tx-modal-amount.income{ color:var(--green); }
+  .tx-modal-amount.transfer{ color:var(--gold-dark); }
+  .tx-modal-date{ font-size:12.5px; color:var(--ink-soft); margin-top:6px; }
+  .tx-modal-body{ padding:4px 22px 6px; border-top:1px solid rgba(255,255,255,0.07); }
+  .tx-modal-row{ display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid rgba(255,255,255,0.07); }
   .tx-modal-row:last-of-type{ border-bottom:none; }
-  .tx-modal-label{ font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.5px; }
-  .tx-modal-value{ font-size:14px; font-weight:600; }
-  .tx-modal-note{ margin-top:10px; font-size:13.5px; color:var(--ink-soft); font-style:italic; }
+  .tx-modal-label{ font-size:12px; color:var(--ink-soft); }
+  .tx-modal-value{ font-size:13.5px; font-weight:600; }
+  .tx-modal-note{ padding:10px 0; font-size:13px; color:var(--ink-soft); font-style:italic; border-top:1px solid rgba(255,255,255,0.07); }
+  .tx-modal-actions{ display:flex; gap:8px; padding:14px 22px calc(16px + env(safe-area-inset-bottom,0px)); }
+  .tx-modal-actions button{ flex:1; }
 
   .fab-add{
     display:none;
@@ -870,18 +882,16 @@
 
   function renderTxDetailModal(t){
     const sign = t.type==='income' ? '+' : t.type==='expense' ? '-' : '⇄';
-    const typeLabel = t.type==='income' ? 'Pemasukan' : t.type==='expense' ? 'Pengeluaran' : 'Transfer';
+    const catName = (t.type==='expense' && t.categoryId) ? catLabel(t.categoryId) : null;
+    const title = (t.note && t.note.trim()) ? t.note : (catName || (t.type==='income' ? 'Pemasukan' : t.type==='transfer' ? 'Transfer' : '(tanpa catatan)'));
     const dateFull = new Date(t.date+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}) + (t.time ? ', '+t.time : '');
     let html = '<div class="tx-modal-backdrop" id="txModalBackdrop">';
     html += '<div class="tx-modal">';
-    html += '<div class="tx-modal-head '+t.type+'">';
-    html += '<div class="tx-modal-actions">';
-    html += '<button id="txModalClose" title="Tutup">✕</button>';
-    html += '<button data-del-tx-modal="'+t.id+'" title="Hapus">🗑️</button>';
-    html += '<button data-edit-tx-modal="'+t.id+'" title="Edit">✎</button>';
-    html += '</div>';
-    html += '<div class="tx-modal-type">'+typeLabel+'</div>';
-    html += '<div class="tx-modal-amount mono">'+sign+' '+fmt(t.amount)+'</div>';
+    html += '<div class="tx-modal-top"><button class="tx-modal-close" id="txModalClose" title="Tutup">✕</button></div>';
+    html += '<div class="tx-modal-head">';
+    html += '<div class="tx-modal-icon '+t.type+'">'+txIcon(t)+'</div>';
+    html += '<div class="tx-modal-title">'+esc(title)+'</div>';
+    html += '<div class="tx-modal-amount '+t.type+' mono">'+sign+' '+fmt(t.amount)+'</div>';
     html += '<div class="tx-modal-date mono">'+dateFull+'</div>';
     html += '</div>';
     html += '<div class="tx-modal-body">';
@@ -889,13 +899,15 @@
     if(t.type==='transfer'){
       html += '<div class="tx-modal-row"><span class="tx-modal-label">Ke Dompet</span><span class="tx-modal-value">'+esc(walletLabel(t.toWalletId))+'</span></div>';
     }
-    if(t.type==='expense' && t.categoryId){
-      html += '<div class="tx-modal-row"><span class="tx-modal-label">Kategori</span><span class="tx-modal-value">'+txIcon(t)+' '+esc(catLabel(t.categoryId))+'</span></div>';
+    if(catName){
+      html += '<div class="tx-modal-row"><span class="tx-modal-label">Kategori</span><span class="tx-modal-value">'+esc(catName)+'</span></div>';
     }
-    if(t.note && t.note.trim()){
-      html += '<div class="tx-modal-note">"'+esc(t.note)+'"</div>';
-    }
-    html += '</div></div></div>';
+    html += '</div>';
+    html += '<div class="tx-modal-actions">';
+    html += '<button class="btn ghost" data-edit-tx-modal="'+t.id+'">Edit</button>';
+    html += '<button class="btn ghost danger" data-del-tx-modal="'+t.id+'">Hapus</button>';
+    html += '</div>';
+    html += '</div></div>';
     return html;
   }
 
