@@ -789,7 +789,7 @@
         if(c.id===editCatId){
           html += '<div class="cat-row">';
           html += '<div class="field" style="margin-bottom:8px;"><label>Nama Kategori</label><input id="ecName_'+c.id+'" value="'+esc(c.name)+'"></div>';
-          html += '<div class="field" style="margin-bottom:8px;"><label>Ikon</label><select id="ecIcon_'+c.id+'">'+iconOptionscategoryIconFor(c)+'</select></div>';
+          html += '<div class="field" style="margin-bottom:8px;"><label>Ikon</label><select id="ecIcon_'+c.id+'">'+iconOptions(categoryIconFor(c))+'</select></div>';
           html += '<div class="field" style="margin-bottom:10px;"><label>Budget per Bulan</label><input id="ecBudget_'+c.id+'" type="text" inputmode="numeric" value="'+Number(c.budget||0).toLocaleString('id-ID')+'"></div>';
           html += '<div style="display:flex;gap:8px;"><button class="btn gold small" data-save-cat="'+c.id+'">Simpan</button><button class="btn ghost small" data-cancel-edit-cat="1">Batal</button></div>';
           html += '</div>';
