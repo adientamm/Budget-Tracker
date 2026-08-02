@@ -547,6 +547,20 @@
       '<button class="btn ghost" id="btnBackFromCode">Kembali</button></div>'+
     '</div>'+
     '<div class="ledger-sheet">'+
+      '<h2>Cadangan Data (Export / Import)</h2>'+
+      '<p style="font-size:13px;color:var(--ink-soft);margin:0 0 8px;">Kalau kode sinkron di suatu HP bermasalah/hilang tapi datanya masih ada di HP itu, pakai ini buat mindahin datanya ke buku kas lain.</p>'+
+      '<button class="btn ghost full" id="btnExportData">Export Data (Salin Cadangan)</button>'+
+      '<div id="exportBox" style="display:none;margin-top:10px;">'+
+        '<textarea id="exportText" readonly style="height:120px;font-size:11px;"></textarea>'+
+        '<button class="btn gold full" id="btnCopyExport" style="margin-top:8px;">Salin Teks Cadangan</button>'+
+      '</div>'+
+      '<div style="margin-top:14px;border-top:1px solid rgba(36,48,74,0.15);padding-top:14px;">'+
+      '<label style="display:block;margin-bottom:6px;">Import Data dari Cadangan</label>'+
+      '<textarea id="importText" placeholder="Tempel teks cadangan di sini" style="height:100px;font-size:11px;"></textarea>'+
+      '<button class="btn full" id="btnImportData" style="margin-top:8px;">Import (Timpa Data Buku Kas Ini)</button>'+
+      '</div>'+
+    '</div>'+
+    '<div class="ledger-sheet">'+
       '<h2>Ganti / Masukkan Kode Lain</h2>'+
       '<p style="font-size:13px;color:var(--ink-soft);margin:0 0 8px;">Kalau kode saat ini error, tidak ditemukan, atau kamu mau pindah ke buku kas lain, masukkan kode baru di sini.</p>'+
       '<div class="field"><label>Kode Sinkron Baru</label><input id="newCode" placeholder="tempel kode di sini"></div>'+
@@ -958,6 +972,40 @@
       statusMsg = null;
       showCodePanel = false;
       render();
+    };
+
+    const exportBtn = document.getElementById('btnExportData');
+    if(exportBtn) exportBtn.onclick = ()=>{
+      const box = document.getElementById('exportBox');
+      const txt = document.getElementById('exportText');
+      txt.value = JSON.stringify(state);
+      box.style.display = 'block';
+    };
+    const copyExportBtn = document.getElementById('btnCopyExport');
+    if(copyExportBtn) copyExportBtn.onclick = ()=>{
+      const txt = document.getElementById('exportText');
+      txt.select();
+      navigator.clipboard.writeText(txt.value).then(()=>{
+        copyExportBtn.textContent = 'Tersalin!';
+        setTimeout(()=>{ copyExportBtn.textContent='Salin Teks Cadangan'; }, 1500);
+      }).catch(()=>{ alert('Gagal menyalin otomatis. Silakan salin manual dari kotak teksnya.'); });
+    };
+    const importBtn = document.getElementById('btnImportData');
+    if(importBtn) importBtn.onclick = async ()=>{
+      const raw = document.getElementById('importText').value.trim();
+      if(!raw){ alert('Tempel teks cadangan dulu'); return; }
+      let parsed;
+      try{ parsed = JSON.parse(raw); }
+      catch(e){ alert('Teks cadangan tidak valid (bukan format JSON yang benar).'); return; }
+      if(!parsed || !Array.isArray(parsed.wallets) || !Array.isArray(parsed.categories) || !Array.isArray(parsed.transactions)){
+        alert('Format data tidak sesuai. Pastikan menyalin teks cadangan yang benar dari fitur Export.');
+        return;
+      }
+      if(!confirm('Ini akan MENIMPA seluruh data di buku kas yang sedang aktif dengan data dari cadangan. Lanjutkan?')) return;
+      state = { wallets: parsed.wallets, categories: parsed.categories, transactions: parsed.transactions };
+      showCodePanel = false;
+      render();
+      await persist();
     };
 
     const addWalletBtn = document.getElementById('addWalletBtn');
