@@ -528,6 +528,10 @@
   }
 
   // ============ CALCULATIONS ============
+  function sortedWallets(){
+    return state.wallets.slice().sort((a,b)=>a.name.localeCompare(b.name,'id',{sensitivity:'base'}));
+  }
+
   function walletIcon(type){
     const t = (type||'').toLowerCase();
     if(t.includes('cash')) return '💵';
@@ -668,7 +672,7 @@
     html += '</div>';
     if(state.wallets.length>0){
       html += '<div class="wallet-mini-row" style="margin-top:16px;">';
-      state.wallets.forEach(w=>{
+      sortedWallets().forEach(w=>{
         const bal = walletBalance(w.id);
         html += '<div class="wallet-mini"><div class="wallet-mini-name">'+esc(w.name)+'</div>';
         html += '<div class="wallet-mini-bal mono '+(bal<0?'expense':'')+'">'+fmt(bal)+'</div></div>';
@@ -730,7 +734,7 @@
       html += '<div class="empty-state">Belum ada dompet.</div>';
     } else {
       html += '<div class="wallet-grid">';
-      state.wallets.forEach(w=>{
+      sortedWallets().forEach(w=>{
         if(w.id===editWalletId){
           html += '<div class="wallet-card">';
           html += '<div class="field" style="margin-bottom:8px;"><label>Nama</label><input id="ewName_'+w.id+'" value="'+esc(w.name)+'"></div>';
