@@ -943,8 +943,9 @@
   }
 
   function renderWalletAddModal(){
-    let html = '<div class="tx-add-modal" id="walletAddModal">';
-    html += '<div class="form-modal-header"><div class="title">Tambah Dompet</div><button id="walletAddModalClose" title="Tutup">✕</button></div>';
+    let html = '<div class="tx-modal-backdrop" id="walletAddModalBackdrop"><div class="tx-modal">';
+    html += '<div class="tx-modal-top"><button class="tx-modal-close" id="walletAddModalClose" title="Tutup">✕</button></div>';
+    html += '<div class="tx-modal-body" style="border-top:none;padding-top:0;">';
     html += '<div class="form-grid">';
     html += field('Nama Dompet', '<input id="wName" placeholder="cth. BCA Tata, Cash, GoPay">');
     html += field('Jenis', '<select id="wType"><option>Cash</option><option>Bank</option><option>E-Wallet</option><option>Tabungan</option><option>Lainnya</option></select>');
@@ -954,7 +955,8 @@
       '<label style="text-transform:none;font-size:13px;">Sertakan di Total Saldo Semua Dompet</label></div>';
     html += '</div>';
     html += '</div>';
-    html += '<div class="tx-add-bottom-actions"><button class="cancel-btn" id="walletAddCancelBtn">✕ BATAL</button><button class="save-btn" id="addWalletBtn">✓ SIMPAN</button></div>';
+    html += '<div class="tx-modal-actions"><button class="btn ghost" id="walletAddCancelBtn">Batal</button><button class="btn gold" id="addWalletBtn">Simpan</button></div>';
+    html += '</div></div>';
     return html;
   }
 
@@ -995,15 +997,17 @@
   }
 
   function renderCatAddModal(){
-    let html = '<div class="tx-add-modal" id="catAddModal">';
-    html += '<div class="form-modal-header"><div class="title">Tambah Kategori Budget</div><button id="catAddModalClose" title="Tutup">✕</button></div>';
+    let html = '<div class="tx-modal-backdrop" id="catAddModalBackdrop"><div class="tx-modal">';
+    html += '<div class="tx-modal-top"><button class="tx-modal-close" id="catAddModalClose" title="Tutup">✕</button></div>';
+    html += '<div class="tx-modal-body" style="border-top:none;padding-top:0;">';
     html += '<div class="form-grid">';
     html += field('Nama Kategori', '<input id="cName" placeholder="cth. Makan, Kucing, Cicilan">');
     html += field('Ikon', '<select id="cIcon">'+iconOptions(CAT_ICONS[0])+'</select>');
     html += field('Budget per Bulan', '<input id="cBudget" type="text" inputmode="numeric" placeholder="0">', 'span2');
     html += '</div>';
     html += '</div>';
-    html += '<div class="tx-add-bottom-actions"><button class="cancel-btn" id="catAddCancelBtn">✕ BATAL</button><button class="save-btn" id="addCatBtn">✓ SIMPAN</button></div>';
+    html += '<div class="tx-modal-actions"><button class="btn ghost" id="catAddCancelBtn">Batal</button><button class="btn gold" id="addCatBtn">Simpan</button></div>';
+    html += '</div></div>';
     return html;
   }
 
@@ -1464,6 +1468,10 @@
     if(walletAddModalClose) walletAddModalClose.onclick = ()=>{ walletFormOpen = false; render(); };
     const walletAddCancelBtn = document.getElementById('walletAddCancelBtn');
     if(walletAddCancelBtn) walletAddCancelBtn.onclick = ()=>{ walletFormOpen = false; render(); };
+    const walletAddModalBackdrop = document.getElementById('walletAddModalBackdrop');
+    if(walletAddModalBackdrop) walletAddModalBackdrop.onclick = (e)=>{
+      if(e.target === walletAddModalBackdrop){ walletFormOpen = false; render(); }
+    };
 
     const addWalletBtn = document.getElementById('addWalletBtn');
     if(addWalletBtn) addWalletBtn.onclick = async ()=>{
@@ -1515,6 +1523,10 @@
     if(catAddModalClose) catAddModalClose.onclick = ()=>{ catFormOpen = false; render(); };
     const catAddCancelBtn = document.getElementById('catAddCancelBtn');
     if(catAddCancelBtn) catAddCancelBtn.onclick = ()=>{ catFormOpen = false; render(); };
+    const catAddModalBackdrop = document.getElementById('catAddModalBackdrop');
+    if(catAddModalBackdrop) catAddModalBackdrop.onclick = (e)=>{
+      if(e.target === catAddModalBackdrop){ catFormOpen = false; render(); }
+    };
 
     const cNameEl = document.getElementById('cName');
     const cIconEl = document.getElementById('cIcon');
@@ -1714,8 +1726,6 @@
     };
 
     attachSwipeBack('txAddModal', ()=>{ txFormOpen = false; render(); });
-    attachSwipeBack('walletAddModal', ()=>{ walletFormOpen = false; render(); });
-    attachSwipeBack('catAddModal', ()=>{ catFormOpen = false; render(); });
     attachSwipeBack('catDetailPage', ()=>{ expandedCatId = null; render(); });
     document.querySelectorAll('[data-edit-type]').forEach(b=>{
       b.onclick = ()=>{ editTxType = b.dataset.editType; render(); };
