@@ -415,6 +415,17 @@
     width:32px; height:32px; border-radius:50%; font-size:14px; cursor:pointer;
     flex-shrink:0; display:flex; align-items:center; justify-content:center;
   }
+  .form-modal-header{
+    display:flex; align-items:center; justify-content:space-between; gap:14px;
+    position:sticky; top:0; background:var(--paper); z-index:5;
+    padding:16px 0 12px; margin:0 0 14px; border-bottom:1px solid rgba(255,255,255,0.08);
+  }
+  .form-modal-header .title{ font-size:16px; font-weight:700; }
+  .form-modal-header button{
+    background:var(--red); border:none; color:#fff;
+    width:32px; height:32px; border-radius:50%; font-size:14px; cursor:pointer;
+    flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  }
   .cat-detail-title{ font-size:16px; font-weight:700; }
   .cat-detail-sub{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
 
@@ -487,6 +498,8 @@
   let txDateDraft = null;
   let editWalletId = null;
   let editCatId = null;
+  let walletFormOpen = false;
+  let catFormOpen = false;
   let editTxId = null;
   let detailTxId = null;
   let editTxType = null;
@@ -929,8 +942,9 @@
     return html;
   }
 
-  function renderWallets(){
-    let html = '<div class="ledger-sheet"><h2>Tambah Dompet Baru</h2>';
+  function renderWalletAddModal(){
+    let html = '<div class="tx-add-modal" id="walletAddModal">';
+    html += '<div class="form-modal-header"><div class="title">Tambah Dompet</div><button id="walletAddModalClose" title="Tutup">✕</button></div>';
     html += '<div class="form-grid">';
     html += field('Nama Dompet', '<input id="wName" placeholder="cth. BCA Tata, Cash, GoPay">');
     html += field('Jenis', '<select id="wType"><option>Cash</option><option>Bank</option><option>E-Wallet</option><option>Tabungan</option><option>Lainnya</option></select>');
@@ -939,7 +953,13 @@
       '<input type="checkbox" id="wIncludeTotal" checked style="width:auto;">'+
       '<label style="text-transform:none;font-size:13px;">Sertakan di Total Saldo Semua Dompet</label></div>';
     html += '</div>';
-    html += '<button class="btn gold full" id="addWalletBtn">+ Tambah Dompet</button></div>';
+    html += '</div>';
+    html += '<div class="tx-add-bottom-actions"><button class="cancel-btn" id="walletAddCancelBtn">✕ BATAL</button><button class="save-btn" id="addWalletBtn">✓ SIMPAN</button></div>';
+    return html;
+  }
+
+  function renderWallets(){
+    let html = '<button class="btn gold full" id="openWalletFormBtn" style="margin-bottom:16px;">+ Tambah Dompet</button>';
 
     html += '<div class="ledger-sheet"><h2>Semua Dompet</h2>';
     if(state.wallets.length===0){
@@ -974,14 +994,21 @@
     return html;
   }
 
-  function renderCategories(){
-    let html = '<div class="ledger-sheet"><h2>Tambah Kategori Budget</h2>';
+  function renderCatAddModal(){
+    let html = '<div class="tx-add-modal" id="catAddModal">';
+    html += '<div class="form-modal-header"><div class="title">Tambah Kategori Budget</div><button id="catAddModalClose" title="Tutup">✕</button></div>';
     html += '<div class="form-grid">';
     html += field('Nama Kategori', '<input id="cName" placeholder="cth. Makan, Kucing, Cicilan">');
     html += field('Ikon', '<select id="cIcon">'+iconOptions(CAT_ICONS[0])+'</select>');
     html += field('Budget per Bulan', '<input id="cBudget" type="text" inputmode="numeric" placeholder="0">', 'span2');
     html += '</div>';
-    html += '<button class="btn gold full" id="addCatBtn">+ Tambah Kategori</button></div>';
+    html += '</div>';
+    html += '<div class="tx-add-bottom-actions"><button class="cancel-btn" id="catAddCancelBtn">✕ BATAL</button><button class="save-btn" id="addCatBtn">✓ SIMPAN</button></div>';
+    return html;
+  }
+
+  function renderCategories(){
+    let html = '<button class="btn gold full" id="openCatFormBtn" style="margin-bottom:16px;">+ Tambah Kategori</button>';
 
     const m = getSelectedMonth();
     html += '<div class="ledger-sheet no-rule"><h2>Semua Budget</h2>';
@@ -1062,6 +1089,7 @@
 
   function renderTxAddModal(){
     let html = '<div class="tx-add-modal" id="txAddModal">';
+    html += '<div class="form-modal-header"><div class="title">Tambah Transaksi</div><button id="txAddModalClose" title="Tutup">✕</button></div>';
 
     html += '<div class="tx-add-type-toggle">';
     ['income','expense','transfer'].forEach(t=>{
@@ -1294,6 +1322,12 @@
     if(txFormOpen){
       html += renderTxAddModal();
     }
+    if(walletFormOpen){
+      html += renderWalletAddModal();
+    }
+    if(catFormOpen){
+      html += renderCatAddModal();
+    }
     if(expandedCatId){
       html += renderCatDetailPage(expandedCatId);
     }
@@ -1424,6 +1458,13 @@
       await persistBulkReplace();
     };
 
+    const openWalletFormBtn = document.getElementById('openWalletFormBtn');
+    if(openWalletFormBtn) openWalletFormBtn.onclick = ()=>{ walletFormOpen = true; render(); };
+    const walletAddModalClose = document.getElementById('walletAddModalClose');
+    if(walletAddModalClose) walletAddModalClose.onclick = ()=>{ walletFormOpen = false; render(); };
+    const walletAddCancelBtn = document.getElementById('walletAddCancelBtn');
+    if(walletAddCancelBtn) walletAddCancelBtn.onclick = ()=>{ walletFormOpen = false; render(); };
+
     const addWalletBtn = document.getElementById('addWalletBtn');
     if(addWalletBtn) addWalletBtn.onclick = async ()=>{
       const name = document.getElementById('wName').value.trim();
@@ -1433,6 +1474,7 @@
       if(!name){ alert('Nama dompet tidak boleh kosong'); return; }
       const newWallet = {id:uid(), name, type, startBalance:start, includeInTotal};
       state.wallets.push(newWallet);
+      walletFormOpen = false;
       render();
       await persistSave('wallets', newWallet);
     };
@@ -1467,6 +1509,13 @@
       };
     });
 
+    const openCatFormBtn = document.getElementById('openCatFormBtn');
+    if(openCatFormBtn) openCatFormBtn.onclick = ()=>{ catFormOpen = true; render(); };
+    const catAddModalClose = document.getElementById('catAddModalClose');
+    if(catAddModalClose) catAddModalClose.onclick = ()=>{ catFormOpen = false; render(); };
+    const catAddCancelBtn = document.getElementById('catAddCancelBtn');
+    if(catAddCancelBtn) catAddCancelBtn.onclick = ()=>{ catFormOpen = false; render(); };
+
     const cNameEl = document.getElementById('cName');
     const cIconEl = document.getElementById('cIcon');
     if(cNameEl && cIconEl){
@@ -1484,6 +1533,7 @@
       if(!name){ alert('Nama kategori tidak boleh kosong'); return; }
       const newCat = {id:uid(), name, icon, budget};
       state.categories.push(newCat);
+      catFormOpen = false;
       render();
       await persistSave('categories', newCat);
     };
@@ -1604,6 +1654,8 @@
 
     const txCancelBtn = document.getElementById('txCancelBtn');
     if(txCancelBtn) txCancelBtn.onclick = ()=>{ txFormOpen = false; render(); };
+    const txAddModalClose = document.getElementById('txAddModalClose');
+    if(txAddModalClose) txAddModalClose.onclick = ()=>{ txFormOpen = false; render(); };
 
     const addTxBtn = document.getElementById('addTxBtn');
     if(addTxBtn) addTxBtn.onclick = async ()=>{
@@ -1662,6 +1714,8 @@
     };
 
     attachSwipeBack('txAddModal', ()=>{ txFormOpen = false; render(); });
+    attachSwipeBack('walletAddModal', ()=>{ walletFormOpen = false; render(); });
+    attachSwipeBack('catAddModal', ()=>{ catFormOpen = false; render(); });
     attachSwipeBack('catDetailPage', ()=>{ expandedCatId = null; render(); });
     document.querySelectorAll('[data-edit-type]').forEach(b=>{
       b.onclick = ()=>{ editTxType = b.dataset.editType; render(); };
