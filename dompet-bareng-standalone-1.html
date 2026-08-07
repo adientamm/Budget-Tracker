@@ -1090,7 +1090,7 @@
   function renderAmountCalcWidget(){
     let html = '<div class="tx-add-amount-box"><div class="amt-wrap"><div class="amt-expr" id="tAmountExpr">'+((txCalcOp && txCalcAcc!==null) ? (formatAmountDisplay(String(txCalcAcc))+' '+txCalcOp) : '')+'</div><div class="amt" id="tAmountDisplay">'+formatAmountDisplay(currentCalcDisplayRaw())+'</div></div><button id="tAmountBackspace" title="Hapus">⌫</button></div>';
     html += '<div class="tx-numpad">';
-    ['7','8','9','÷','4','5','6','×','1','2','3','-',',','0','=','+'].forEach(k=>{
+    ['+','7','8','9','-','4','5','6','×','1','2','3','÷','0',',','='].forEach(k=>{
       if(k==='='){
         html += '<button data-num="=" class="calc-eq">=</button>';
       } else if(['÷','×','-','+'].includes(k)){
