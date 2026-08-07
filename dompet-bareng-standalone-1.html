@@ -385,6 +385,7 @@
   try{ localStorage.getItem('__test__'); } catch(e){ storageBlocked = true; }
   let currentTab = 'dashboard';
   let txTypeDraft = 'expense';
+  let txFormOpen = false;
   let editWalletId = null;
   let editCatId = null;
   let editTxId = null;
@@ -912,32 +913,35 @@
   }
 
   function renderTransactions(){
-    let html = '<div class="ledger-sheet"><h2>Catat Transaksi</h2>';
-    html += '<div class="type-toggle">';
-    ['expense','income','transfer'].forEach(t=>{
-      const label = t==='expense'?'Pengeluaran':t==='income'?'Pemasukan':'Transfer';
-      html += '<button data-type="'+t+'" class="'+(txTypeDraft===t?'active '+t:'')+'">'+label+'</button>';
-    });
-    html += '</div>';
+    let html = '';
 
     if(state.wallets.length===0){
-      html += '<div class="empty-state">Tambah dompet dulu di tab Dompet sebelum mencatat transaksi.</div></div>';
-      return html;
-    }
+      html += '<div class="ledger-sheet"><h2>Catat Transaksi</h2><div class="empty-state">Tambah dompet dulu di tab Dompet sebelum mencatat transaksi.</div></div>';
+    } else if(!txFormOpen){
+      html += '<button class="btn gold full" id="openTxFormBtn" style="margin-bottom:16px;">+ Tambah Transaksi</button>';
+    } else {
+      html += '<div class="ledger-sheet"><div class="header-row" style="margin-bottom:6px;"><h2 style="margin:0;">Catat Transaksi</h2><button class="btn ghost small" id="closeTxFormBtn" title="Tutup">✕</button></div>';
+      html += '<div class="type-toggle">';
+      ['expense','income','transfer'].forEach(t=>{
+        const label = t==='expense'?'Pengeluaran':t==='income'?'Pemasukan':'Transfer';
+        html += '<button data-type="'+t+'" class="'+(txTypeDraft===t?'active '+t:'')+'">'+label+'</button>';
+      });
+      html += '</div>';
 
-    html += '<div class="form-grid">';
-    html += field('Jumlah', '<input id="tAmount" type="text" inputmode="numeric" placeholder="0">');
-    html += field('Tanggal', '<input id="tDate" type="date" value="'+todayStr()+'">');
-    html += field(txTypeDraft==='transfer' ? 'Dari Dompet' : 'Dompet', '<select id="tWallet">'+state.wallets.map(w=>'<option value="'+w.id+'">'+esc(w.name)+'</option>').join('')+'</select>');
-    if(txTypeDraft==='transfer'){
-      html += field('Ke Dompet', '<select id="tToWallet">'+state.wallets.map(w=>'<option value="'+w.id+'">'+esc(w.name)+'</option>').join('')+'</select>');
+      html += '<div class="form-grid">';
+      html += field('Jumlah', '<input id="tAmount" type="text" inputmode="numeric" placeholder="0">');
+      html += field('Tanggal', '<input id="tDate" type="date" value="'+todayStr()+'">');
+      html += field(txTypeDraft==='transfer' ? 'Dari Dompet' : 'Dompet', '<select id="tWallet">'+state.wallets.map(w=>'<option value="'+w.id+'">'+esc(w.name)+'</option>').join('')+'</select>');
+      if(txTypeDraft==='transfer'){
+        html += field('Ke Dompet', '<select id="tToWallet">'+state.wallets.map(w=>'<option value="'+w.id+'">'+esc(w.name)+'</option>').join('')+'</select>');
+      }
+      if(txTypeDraft==='expense'){
+        html += field('Kategori', '<select id="tCategory"><option value="">- Tanpa kategori -</option>'+state.categories.map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('')+'</select>');
+      }
+      html += field('Catatan', '<input id="tNote" placeholder="cth. belanja pasar, gaji, dll">', 'span2');
+      html += '</div>';
+      html += '<button class="btn gold full" id="addTxBtn">+ Simpan Transaksi</button></div>';
     }
-    if(txTypeDraft==='expense'){
-      html += field('Kategori', '<select id="tCategory"><option value="">- Tanpa kategori -</option>'+state.categories.map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('')+'</select>');
-    }
-    html += field('Catatan', '<input id="tNote" placeholder="cth. belanja pasar, gaji, dll">', 'span2');
-    html += '</div>';
-    html += '<button class="btn gold full" id="addTxBtn">+ Simpan Transaksi</button></div>';
 
     html += '<div class="ledger-sheet no-rule"><h2>Riwayat Transaksi</h2>';
     html += '<div class="filter-row">';
@@ -1299,6 +1303,12 @@
       };
     });
 
+    const openTxFormBtn = document.getElementById('openTxFormBtn');
+    if(openTxFormBtn) openTxFormBtn.onclick = ()=>{ txFormOpen = true; render(); };
+
+    const closeTxFormBtn = document.getElementById('closeTxFormBtn');
+    if(closeTxFormBtn) closeTxFormBtn.onclick = ()=>{ txFormOpen = false; render(); };
+
     document.querySelectorAll('.type-toggle button').forEach(b=>{
       b.onclick = ()=>{ txTypeDraft = b.dataset.type; render(); };
     });
@@ -1320,6 +1330,7 @@
         tx.categoryId = document.getElementById('tCategory').value || null;
       }
       state.transactions.push(tx);
+      txFormOpen = false;
       render();
       await persistSave('transactions', tx);
     };
@@ -1421,6 +1432,7 @@
   if(fabEl) fabEl.onclick = ()=>{
     currentTab = 'transactions';
     showCodePanel = false;
+    txFormOpen = true;
     render();
     window.scrollTo({top:0, behavior:'smooth'});
   };
