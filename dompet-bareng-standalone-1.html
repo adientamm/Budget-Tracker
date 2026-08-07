@@ -961,9 +961,7 @@
   }
 
   function renderWallets(){
-    let html = '<button class="btn gold full" id="openWalletFormBtn" style="margin-bottom:16px;">+ Tambah Dompet</button>';
-
-    html += '<div class="ledger-sheet"><h2>Semua Dompet</h2>';
+    let html = '<div class="ledger-sheet"><h2>Semua Dompet</h2>';
     if(state.wallets.length===0){
       html += '<div class="empty-state">Belum ada dompet.</div>';
     } else {
@@ -1012,10 +1010,8 @@
   }
 
   function renderCategories(){
-    let html = '<button class="btn gold full" id="openCatFormBtn" style="margin-bottom:16px;">+ Tambah Kategori</button>';
-
     const m = getSelectedMonth();
-    html += '<div class="ledger-sheet no-rule"><h2>Semua Budget</h2>';
+    let html = '<div class="ledger-sheet no-rule"><h2>Semua Budget</h2>';
     if(state.categories.length===0){
       html += '<div class="empty-state">Belum ada kategori.</div>';
     } else {
@@ -1078,8 +1074,6 @@
 
     if(state.wallets.length===0){
       html += '<div class="ledger-sheet"><h2>Catat Transaksi</h2><div class="empty-state">Tambah dompet dulu di tab Dompet sebelum mencatat transaksi.</div></div>';
-    } else {
-      html += '<button class="btn gold full" id="openTxFormBtn" style="margin-bottom:16px;">+ Tambah Transaksi</button>';
     }
 
     html += '<div class="ledger-sheet no-rule"><h2>Riwayat Transaksi</h2>';
@@ -1297,7 +1291,17 @@
     let html = '<div class="sticky-top">';
     html += renderHeaderTop();
     if(!showCodePanel && (currentTab==='dashboard' || currentTab==='categories')){
-      html += '<div class="sticky-top-inner">'+monthNavBar()+'</div>';
+      html += '<div class="sticky-top-inner">'+monthNavBar();
+      if(currentTab==='categories'){
+        html += '<button class="btn gold full" id="openCatFormBtn" style="margin-top:8px;">+ Tambah Kategori</button>';
+      }
+      html += '</div>';
+    }
+    if(!showCodePanel && currentTab==='wallets'){
+      html += '<div class="sticky-top-inner"><button class="btn gold full" id="openWalletFormBtn">+ Tambah Dompet</button></div>';
+    }
+    if(!showCodePanel && currentTab==='transactions' && state.wallets.length>0){
+      html += '<div class="sticky-top-inner"><button class="btn gold full" id="openTxFormBtn">+ Tambah Transaksi</button></div>';
     }
     html += '</div>';
     html += '<nav class="tabs">'+renderTabButtons()+'</nav>';
