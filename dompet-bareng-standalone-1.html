@@ -1307,6 +1307,27 @@
     return Number((el.value||'0').replace(/\D/g,''))||0;
   }
 
+  function attachSwipeBack(elId, closeFn){
+    const el = document.getElementById(elId);
+    if(!el) return;
+    let startX=null, startY=null, tracking=false;
+    el.addEventListener('touchstart', (e)=>{
+      const t = e.touches[0];
+      if(t.clientX <= 28){ startX=t.clientX; startY=t.clientY; tracking=true; }
+    }, {passive:true});
+    el.addEventListener('touchmove', (e)=>{
+      if(!tracking) return;
+      const t = e.touches[0];
+      if(Math.abs(t.clientY-startY) > 60){ tracking=false; }
+    }, {passive:true});
+    el.addEventListener('touchend', (e)=>{
+      if(!tracking) return;
+      tracking=false;
+      const t = e.changedTouches[0];
+      if(t.clientX - startX > 70 && Math.abs(t.clientY-startY) < 60){ closeFn(); }
+    }, {passive:true});
+  }
+
   function attachAppHandlers(){
     document.querySelectorAll('[data-view-tx]').forEach(el=>{
       el.onclick = (e)=>{
@@ -1630,6 +1651,9 @@
     if(txEditModalBackdrop) txEditModalBackdrop.onclick = (e)=>{
       if(e.target === txEditModalBackdrop){ editTxId = null; editTxType = null; render(); }
     };
+
+    attachSwipeBack('txAddModal', ()=>{ txFormOpen = false; render(); });
+    attachSwipeBack('catDetailPage', ()=>{ expandedCatId = null; render(); });
     document.querySelectorAll('[data-edit-type]').forEach(b=>{
       b.onclick = ()=>{ editTxType = b.dataset.editType; render(); };
     });
