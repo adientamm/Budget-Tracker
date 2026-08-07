@@ -698,7 +698,7 @@
 
   function renderTabButtons(){
     return ['dashboard','transactions','categories','wallets'].map(t=>{
-      const label = t==='dashboard'?'Ringkasan':t==='wallets'?'Dompet':t==='categories'?'Kategori':'Transaksi';
+      const label = t==='dashboard'?'Ringkasan':t==='wallets'?'Dompet':t==='categories'?'Budget':'Transaksi';
       return '<button class="tab-btn'+(currentTab===t?' active':'')+'" data-tab="'+t+'">'+tabIconSvg(t)+label+'</button>';
     }).join('');
   }
@@ -764,7 +764,7 @@
 
     html += '<div class="ledger-sheet no-rule"><h2>Budget Kategori — '+monthName+'</h2>';
     if(state.categories.length===0){
-      html += '<div class="empty-state">Belum ada kategori budget. Tambah di tab Kategori.</div>';
+      html += '<div class="empty-state">Belum ada kategori budget. Tambah di tab Budget.</div>';
     } else {
       let totalBudget = 0, totalSpent = 0;
       state.categories.forEach(c=>{ totalBudget += Number(c.budget)||0; totalSpent += categorySpent(c.id, m); });
@@ -850,7 +850,7 @@
     html += '<button class="btn gold full" id="addCatBtn">+ Tambah Kategori</button></div>';
 
     const m = getSelectedMonth();
-    html += '<div class="ledger-sheet no-rule"><h2>Semua Kategori</h2>';
+    html += '<div class="ledger-sheet no-rule"><h2>Semua Budget</h2>';
     if(state.categories.length===0){
       html += '<div class="empty-state">Belum ada kategori.</div>';
     } else {
