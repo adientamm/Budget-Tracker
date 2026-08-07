@@ -297,7 +297,8 @@
     margin-bottom:14px;
   }
   @keyframes slideUp{ from{ transform:translateY(16px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
-  .tx-modal-top{ display:flex; justify-content:flex-end; padding:10px 10px 0; }
+  .tx-modal-top{ display:flex; align-items:center; justify-content:space-between; padding:10px 16px 0; }
+  .tx-modal-title{ font-size:15px; font-weight:700; }
   .tx-modal-close{
     background:none; border:none; color:var(--ink-soft); width:30px; height:30px;
     border-radius:50%; font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center;
@@ -397,9 +398,9 @@
     display:flex; gap:10px; padding:12px 14px calc(12px + env(safe-area-inset-bottom,0px));
     background:var(--paper); border-top:1px solid rgba(255,255,255,0.08);
   }
-  .tx-add-bottom-actions button{ flex:1; padding:13px 0; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; }
-  .tx-add-bottom-actions .cancel-btn{ background:var(--red); border:none; color:#fff; }
-  .tx-add-bottom-actions .save-btn{ background:var(--gold-dark); border:none; color:#1a1a1a; }
+  .tx-add-bottom-actions button, .tx-modal-actions .cancel-btn, .tx-modal-actions .save-btn{ flex:1; padding:13px 0; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; }
+  .cancel-btn{ background:var(--red); border:none; color:#fff; }
+  .save-btn{ background:var(--gold-dark); border:none; color:#1a1a1a; }
 
   .cat-detail-page{
     position:fixed; inset:0; z-index:390; background:var(--paper);
@@ -944,7 +945,7 @@
 
   function renderWalletAddModal(){
     let html = '<div class="tx-modal-backdrop" id="walletAddModalBackdrop"><div class="tx-modal">';
-    html += '<div class="tx-modal-top"><button class="tx-modal-close" id="walletAddModalClose" title="Tutup">✕</button></div>';
+    html += '<div class="tx-modal-top"><div class="tx-modal-title">Tambah Dompet</div><button class="tx-modal-close" id="walletAddModalClose" title="Tutup">✕</button></div>';
     html += '<div class="tx-modal-body" style="border-top:none;padding-top:0;">';
     html += '<div class="form-grid">';
     html += field('Nama Dompet', '<input id="wName" placeholder="cth. BCA Tata, Cash, GoPay">');
@@ -955,7 +956,7 @@
       '<label style="text-transform:none;font-size:13px;">Sertakan di Total Saldo Semua Dompet</label></div>';
     html += '</div>';
     html += '</div>';
-    html += '<div class="tx-modal-actions"><button class="btn ghost" id="walletAddCancelBtn">Batal</button><button class="btn gold" id="addWalletBtn">Simpan</button></div>';
+    html += '<div class="tx-modal-actions"><button class="cancel-btn" id="walletAddCancelBtn">✕ BATAL</button><button class="save-btn" id="addWalletBtn">✓ SIMPAN</button></div>';
     html += '</div></div>';
     return html;
   }
@@ -996,7 +997,7 @@
 
   function renderCatAddModal(){
     let html = '<div class="tx-modal-backdrop" id="catAddModalBackdrop"><div class="tx-modal">';
-    html += '<div class="tx-modal-top"><button class="tx-modal-close" id="catAddModalClose" title="Tutup">✕</button></div>';
+    html += '<div class="tx-modal-top"><div class="tx-modal-title">Tambah Kategori Budget</div><button class="tx-modal-close" id="catAddModalClose" title="Tutup">✕</button></div>';
     html += '<div class="tx-modal-body" style="border-top:none;padding-top:0;">';
     html += '<div class="form-grid">';
     html += field('Nama Kategori', '<input id="cName" placeholder="cth. Makan, Kucing, Cicilan">');
@@ -1004,7 +1005,7 @@
     html += field('Budget per Bulan', '<input id="cBudget" type="text" inputmode="numeric" placeholder="0">', 'span2');
     html += '</div>';
     html += '</div>';
-    html += '<div class="tx-modal-actions"><button class="btn ghost" id="catAddCancelBtn">Batal</button><button class="btn gold" id="addCatBtn">Simpan</button></div>';
+    html += '<div class="tx-modal-actions"><button class="cancel-btn" id="catAddCancelBtn">✕ BATAL</button><button class="save-btn" id="addCatBtn">✓ SIMPAN</button></div>';
     html += '</div></div>';
     return html;
   }
@@ -1085,6 +1086,22 @@
     return html;
   }
 
+  function renderAmountCalcWidget(){
+    let html = '<div class="tx-add-amount-box"><div class="amt-wrap"><div class="amt-expr" id="tAmountExpr">'+((txCalcOp && txCalcAcc!==null) ? (formatAmountDisplay(String(txCalcAcc))+' '+txCalcOp) : '')+'</div><div class="amt" id="tAmountDisplay">'+formatAmountDisplay(currentCalcDisplayRaw())+'</div></div><button id="tAmountBackspace" title="Hapus">⌫</button></div>';
+    html += '<div class="tx-numpad">';
+    ['7','8','9','÷','4','5','6','×','1','2','3','-',',','0','=','+'].forEach(k=>{
+      if(k==='='){
+        html += '<button data-num="=" class="calc-eq">=</button>';
+      } else if(['÷','×','-','+'].includes(k)){
+        html += '<button data-num="'+k+'" class="calc-op'+(txCalcOp===k?' active':'')+'">'+k+'</button>';
+      } else {
+        html += '<button data-num="'+k+'">'+k+'</button>';
+      }
+    });
+    html += '</div>';
+    return html;
+  }
+
   function renderTxAddModal(){
     let html = '<div class="tx-add-modal" id="txAddModal">';
     html += '<div class="form-modal-header"><div class="title">Tambah Transaksi</div><button id="txAddModalClose" title="Tutup">✕</button></div>';
@@ -1110,19 +1127,7 @@
 
     html += '<textarea class="tx-add-notes" id="tNote" placeholder="Tambah catatan">'+esc(txNoteDraft)+'</textarea>';
 
-    html += '<div class="tx-add-amount-box"><div class="amt-wrap"><div class="amt-expr" id="tAmountExpr">'+((txCalcOp && txCalcAcc!==null) ? (formatAmountDisplay(String(txCalcAcc))+' '+txCalcOp) : '')+'</div><div class="amt" id="tAmountDisplay">'+formatAmountDisplay(currentCalcDisplayRaw())+'</div></div><button id="tAmountBackspace" title="Hapus">⌫</button></div>';
-
-    html += '<div class="tx-numpad">';
-    ['7','8','9','÷','4','5','6','×','1','2','3','-',',','0','=','+'].forEach(k=>{
-      if(k==='='){
-        html += '<button data-num="=" class="calc-eq">=</button>';
-      } else if(['÷','×','-','+'].includes(k)){
-        html += '<button data-num="'+k+'" class="calc-op'+(txCalcOp===k?' active':'')+'">'+k+'</button>';
-      } else {
-        html += '<button data-num="'+k+'">'+k+'</button>';
-      }
-    });
-    html += '</div>';
+    html += renderAmountCalcWidget();
 
     html += '<div class="tx-add-date-row">';
     html += '<div class="field-mini"><label>Tanggal</label><input class="tx-add-picker" id="tDate" type="date" value="'+(txDateDraft||todayStr())+'"></div>';
@@ -1206,7 +1211,7 @@
 
   function renderTxEditForm(t){
     let html = '<div class="tx-modal-backdrop" id="txEditModalBackdrop"><div class="tx-modal">';
-    html += '<div class="tx-modal-top"><button class="tx-modal-close" id="txEditModalClose" title="Tutup">✕</button></div>';
+    html += '<div class="tx-modal-top"><div class="tx-modal-title">Edit Transaksi</div><button class="tx-modal-close" id="txEditModalClose" title="Tutup">✕</button></div>';
     html += '<div class="tx-modal-body" style="border-top:none;padding-top:0;">';
     html += '<div class="type-toggle" style="margin-bottom:10px;">';
     ['expense','income','transfer'].forEach(ty=>{
@@ -1214,8 +1219,8 @@
       html += '<button data-edit-type="'+ty+'" class="'+(editTxType===ty?'active '+ty:'')+'">'+label+'</button>';
     });
     html += '</div>';
-    html += '<div class="form-grid">';
-    html += field('Jumlah', '<input id="etAmount" type="text" inputmode="numeric" value="'+Number(t.amount).toLocaleString('id-ID')+'">');
+    html += renderAmountCalcWidget();
+    html += '<div class="form-grid" style="margin-top:10px;">';
     html += field('Tanggal', '<input id="etDate" type="date" value="'+t.date+'">');
     html += field('Jam', '<input id="etTime" type="time" value="'+(t.time||'00:00')+'">');
     html += field(editTxType==='transfer' ? 'Dari Dompet' : 'Dompet', '<select id="etWallet">'+state.wallets.map(w=>'<option value="'+w.id+'"'+(w.id===t.walletId?' selected':'')+'>'+esc(w.name)+'</option>').join('')+'</select>');
@@ -1228,7 +1233,7 @@
     html += field('Catatan', '<input id="etNote" value="'+esc(t.note||'')+'">', 'span2');
     html += '</div>';
     html += '</div>';
-    html += '<div class="tx-modal-actions"><button class="btn ghost" id="txEditCancelBtn">Batal</button><button class="btn gold" data-save-tx="'+t.id+'">Simpan</button></div>';
+    html += '<div class="tx-modal-actions"><button class="cancel-btn" id="txEditCancelBtn">✕ BATAL</button><button class="save-btn" data-save-tx="'+t.id+'">✓ SIMPAN</button></div>';
     html += '</div></div>';
     return html;
   }
@@ -1412,6 +1417,10 @@
         showCodePanel = false;
         editTxId = id;
         editTxType = t.type;
+        txAmountDraft = String(t.amount);
+        txCalcAcc = null;
+        txCalcOp = null;
+        txCalcJustEvaluated = false;
         render();
       };
     });
@@ -1421,7 +1430,7 @@
     document.querySelectorAll('[data-goto-current]').forEach(b=>{
       b.onclick = ()=>{ selectedMonth = null; render(); };
     });
-    ['wStart','cBudget','etAmount'].forEach(attachThousandFormat);
+    ['wStart','cBudget'].forEach(attachThousandFormat);
     state.wallets.forEach(w=>attachThousandFormat('ewStart_'+w.id));
     state.categories.forEach(c=>attachThousandFormat('ecBudget_'+c.id));
     document.querySelectorAll('.tab-btn').forEach(b=>{
@@ -1714,6 +1723,10 @@
         const t = state.transactions.find(x=>x.id===id);
         editTxId = id;
         editTxType = t.type;
+        txAmountDraft = String(t.amount);
+        txCalcAcc = null;
+        txCalcOp = null;
+        txCalcJustEvaluated = false;
         render();
       };
     });
@@ -1738,7 +1751,12 @@
       b.onclick = async ()=>{
         const id = b.dataset.saveTx;
         const t = state.transactions.find(x=>x.id===id);
-        const amount = parseAmountInput('etAmount');
+        if(txCalcOp!==null){
+          const b2 = txAmountDraft==='' ? txCalcAcc : (parseFloat(txAmountDraft)||0);
+          txAmountDraft = String(calcApply(txCalcAcc, txCalcOp, b2));
+          txCalcAcc = null; txCalcOp = null;
+        }
+        const amount = parseFloat(txAmountDraft)||0;
         if(!amount || amount<=0){ alert('Jumlah harus lebih dari 0'); return; }
         t.type = editTxType;
         t.amount = amount;
@@ -1788,6 +1806,10 @@
             const t = state.transactions.find(x=>x.id===id);
             editTxId = id;
             editTxType = t.type;
+            txAmountDraft = String(t.amount);
+            txCalcAcc = null;
+            txCalcOp = null;
+            txCalcJustEvaluated = false;
             render();
           };
         });
