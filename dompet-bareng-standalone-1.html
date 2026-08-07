@@ -1221,8 +1221,8 @@
       html += '<button data-edit-type="'+ty+'" class="'+(editTxType===ty?'active '+ty:'')+'">'+label+'</button>';
     });
     html += '</div>';
-    html += renderAmountCalcWidget();
-    html += '<div class="form-grid" style="margin-top:10px;">';
+    html += '<div class="form-grid">';
+    html += field('Jumlah', '<input id="etAmount" type="text" inputmode="numeric" value="'+Number(t.amount).toLocaleString('id-ID')+'">');
     html += field('Tanggal', '<input id="etDate" type="date" value="'+t.date+'">');
     html += field('Jam', '<input id="etTime" type="time" value="'+(t.time||'00:00')+'">');
     html += field(editTxType==='transfer' ? 'Dari Dompet' : 'Dompet', '<select id="etWallet">'+state.wallets.map(w=>'<option value="'+w.id+'"'+(w.id===t.walletId?' selected':'')+'>'+esc(w.name)+'</option>').join('')+'</select>');
@@ -1419,10 +1419,6 @@
         showCodePanel = false;
         editTxId = id;
         editTxType = t.type;
-        txAmountDraft = String(t.amount);
-        txCalcAcc = null;
-        txCalcOp = null;
-        txCalcJustEvaluated = false;
         render();
       };
     });
@@ -1432,7 +1428,7 @@
     document.querySelectorAll('[data-goto-current]').forEach(b=>{
       b.onclick = ()=>{ selectedMonth = null; render(); };
     });
-    ['wStart','cBudget'].forEach(attachThousandFormat);
+    ['wStart','cBudget','etAmount'].forEach(attachThousandFormat);
     state.wallets.forEach(w=>attachThousandFormat('ewStart_'+w.id));
     state.categories.forEach(c=>attachThousandFormat('ecBudget_'+c.id));
     document.querySelectorAll('.tab-btn').forEach(b=>{
@@ -1725,10 +1721,6 @@
         const t = state.transactions.find(x=>x.id===id);
         editTxId = id;
         editTxType = t.type;
-        txAmountDraft = String(t.amount);
-        txCalcAcc = null;
-        txCalcOp = null;
-        txCalcJustEvaluated = false;
         render();
       };
     });
@@ -1753,12 +1745,7 @@
       b.onclick = async ()=>{
         const id = b.dataset.saveTx;
         const t = state.transactions.find(x=>x.id===id);
-        if(txCalcOp!==null){
-          const b2 = txAmountDraft==='' ? txCalcAcc : (parseFloat(txAmountDraft)||0);
-          txAmountDraft = String(calcApply(txCalcAcc, txCalcOp, b2));
-          txCalcAcc = null; txCalcOp = null;
-        }
-        const amount = parseFloat(txAmountDraft)||0;
+        const amount = parseAmountInput('etAmount');
         if(!amount || amount<=0){ alert('Jumlah harus lebih dari 0'); return; }
         t.type = editTxType;
         t.amount = amount;
@@ -1808,10 +1795,6 @@
             const t = state.transactions.find(x=>x.id===id);
             editTxId = id;
             editTxType = t.type;
-            txAmountDraft = String(t.amount);
-            txCalcAcc = null;
-            txCalcOp = null;
-            txCalcJustEvaluated = false;
             render();
           };
         });
