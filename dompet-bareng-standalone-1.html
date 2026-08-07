@@ -387,6 +387,23 @@
   .tx-add-bottom-actions .cancel-btn{ background:none; border:1px solid rgba(255,255,255,0.2); color:var(--ink-soft); }
   .tx-add-bottom-actions .save-btn{ background:var(--gold-dark); border:none; color:#1a1a1a; }
 
+  .cat-detail-page{
+    position:fixed; inset:0; z-index:390; background:var(--paper);
+    overflow-y:auto; padding:0 14px calc(24px + env(safe-area-inset-bottom,0px));
+  }
+  .cat-detail-header{
+    display:flex; align-items:center; gap:14px;
+    position:sticky; top:0; background:var(--paper); z-index:5;
+    padding:16px 0 10px; border-bottom:1px solid rgba(255,255,255,0.08);
+  }
+  .cat-detail-header button{
+    background:none; border:1px solid rgba(255,255,255,0.2); color:var(--ink);
+    width:32px; height:32px; border-radius:50%; font-size:14px; cursor:pointer;
+    flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  }
+  .cat-detail-title{ font-size:16px; font-weight:700; }
+  .cat-detail-sub{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+
   .toast{
     position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px);
     background:#1E4433; color:#F4F1E8; font-size:13px; font-weight:600;
@@ -720,6 +737,42 @@
   function walletLabel(id){ const w = state.wallets.find(x=>x.id===id); return w ? w.name : '(dompet dihapus)'; }
   function catLabel(id){ if(!id) return '-'; const c = state.categories.find(x=>x.id===id); return c ? c.name : '(kategori dihapus)'; }
 
+  function renderCatDetailPage(catId){
+    const c = state.categories.find(x=>x.id===catId);
+    if(!c) return '';
+    const m = getSelectedMonth();
+    const spent = categorySpent(c.id, m);
+    const budget = Number(c.budget)||0;
+    const sisa = budget - spent;
+    const pct = budget>0 ? Math.min(100,(spent/budget)*100) : 0;
+    const over = budget>0 && spent>budget;
+    const warn = !over && budget>0 && spent/budget>=0.8;
+    const list = state.transactions
+      .filter(t=>t.type==='expense' && t.categoryId===catId && monthKey(t.date)===m)
+      .sort(txSortDesc);
+
+    let html = '<div class="cat-detail-page" id="catDetailPage">';
+    html += '<div class="cat-detail-header"><button id="catDetailClose" title="Tutup">✕</button><div><div class="cat-detail-title">'+esc(c.name)+'</div><div class="cat-detail-sub">'+monthLabel(m)+'</div></div></div>';
+
+    html += '<div class="ledger-sheet no-rule" style="margin-top:14px;">';
+    html += '<div class="cat-top"><span class="cat-name"><span class="cat-icon-badge">'+categoryIconFor(c)+'</span>'+esc(c.name)+'</span>';
+    html += '<span class="cat-figures mono"><b>'+fmt(spent)+'</b> / '+fmt(budget)+'</span></div>';
+    html += '<div class="bar-track"><div class="bar-fill '+(over?'over':warn?'warn':'')+'" style="width:'+pct+'%"></div></div>';
+    html += '<div style="margin-top:6px;font-size:12.5px;color:var(--ink-soft);">Sisa: <span class="mono" style="font-weight:600;color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span></div>';
+    html += '</div>';
+
+    html += '<div class="ledger-sheet no-rule"><h2>'+monthLabel(m)+' : '+list.length+' transaksi</h2>';
+    if(list.length===0){
+      html += '<div class="empty-state">Belum ada transaksi di kategori ini bulan ini.</div>';
+    } else {
+      html += renderTxList(list, true);
+    }
+    html += '</div>';
+
+    html += '</div>';
+    return html;
+  }
+
   function renderCatTxDetail(catId, m){
     const list = state.transactions
       .filter(t=>t.type==='expense' && t.categoryId===catId && monthKey(t.date)===m)
@@ -847,11 +900,10 @@
         const pct = budget>0 ? Math.min(100, (spent/budget)*100) : 0;
         const over = budget>0 && spent>budget;
         const warn = !over && budget>0 && spent/budget>=0.8;
-        html += '<div class="cat-row" data-toggle-cat="'+c.id+'" style="cursor:pointer;"><div class="cat-top"><span class="cat-name"><span class="cat-icon-badge">'+categoryIconFor(c)+'</span>'+esc(c.name)+'</span>';
+        html += '<div class="cat-row" data-open-cat="'+c.id+'" style="cursor:pointer;"><div class="cat-top"><span class="cat-name"><span class="cat-icon-badge">'+categoryIconFor(c)+'</span>'+esc(c.name)+'</span>';
         html += '<span class="cat-figures mono"><b>'+fmt(spent)+'</b> / '+fmt(budget)+'</span></div>';
         html += '<div class="bar-track"><div class="bar-fill '+(over?'over':warn?'warn':'')+'" style="width:'+pct+'%"></div></div>';
-        html += '<div style="margin-top:6px;font-size:12.5px;color:var(--ink-soft);">Sisa: <span class="mono" style="font-weight:600;color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span> <span style="float:right;">'+(expandedCatId===c.id?'▲ Tutup':'▼ Lihat transaksi')+'</span></div>';
-        if(expandedCatId===c.id){ html += renderCatTxDetail(c.id, m); }
+        html += '<div style="margin-top:6px;font-size:12.5px;color:var(--ink-soft);">Sisa: <span class="mono" style="font-weight:600;color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span> <span style="float:right;">▸ Lihat transaksi</span></div>';
         html += '</div>';
       });
     }
@@ -944,14 +996,13 @@
         const pct = budget>0 ? Math.min(100,(spent/budget)*100) : 0;
         const over = budget>0 && spent>budget;
         const warn = !over && budget>0 && spent/budget>=0.8;
-        html += '<div class="cat-row"><div class="cat-top"><span class="cat-name"><span class="cat-icon-badge">'+categoryIconFor(c)+'</span>'+esc(c.name)+'</span>';
+        html += '<div class="cat-row"><div class="cat-top" data-open-cat="'+c.id+'" style="cursor:pointer;"><span class="cat-name"><span class="cat-icon-badge">'+categoryIconFor(c)+'</span>'+esc(c.name)+'</span>';
         html += '<span class="cat-figures mono"><b>'+fmt(spent)+'</b> / '+fmt(budget)+'</span></div>';
-        html += '<div class="bar-track"><div class="bar-fill '+(over?'over':warn?'warn':'')+'" style="width:'+pct+'%"></div></div>';
-        html += '<div style="margin-top:6px;font-size:12.5px;color:var(--ink-soft);">Sisa: <span class="mono" style="font-weight:600;color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span></div>';
+        html += '<div class="bar-track" data-open-cat="'+c.id+'" style="cursor:pointer;"><div class="bar-fill '+(over?'over':warn?'warn':'')+'" style="width:'+pct+'%"></div></div>';
+        html += '<div data-open-cat="'+c.id+'" style="cursor:pointer;margin-top:6px;font-size:12.5px;color:var(--ink-soft);">Sisa: <span class="mono" style="font-weight:600;color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span></div>';
         html += '<div style="margin-top:8px;display:flex;gap:8px;align-items:center;">';
-        html += '<button class="btn ghost small" data-toggle-cat="'+c.id+'">'+(expandedCatId===c.id?'▲ Tutup':'▼ Transaksi')+'</button>';
+        html += '<button class="btn ghost small" data-open-cat="'+c.id+'">▸ Transaksi</button>';
         html += '<button class="btn ghost small" data-edit-cat="'+c.id+'">Edit</button><button class="btn ghost danger small" data-del-cat="'+c.id+'">Hapus</button></div>';
-        if(expandedCatId===c.id){ html += renderCatTxDetail(c.id, m); }
         html += '</div>';
       });
     }
@@ -1186,6 +1237,9 @@
     if(txFormOpen){
       html += renderTxAddModal();
     }
+    if(expandedCatId){
+      html += renderCatDetailPage(expandedCatId);
+    }
     root.innerHTML = html;
     attachAppHandlers();
     updateFabVisibility();
@@ -1364,14 +1418,15 @@
         await persistDelete('categories', delId);
       };
     });
-    document.querySelectorAll('[data-toggle-cat]').forEach(el=>{
+    document.querySelectorAll('[data-open-cat]').forEach(el=>{
       el.onclick = (e)=>{
         if(e.target.closest('[data-edit-cat],[data-del-cat]')) return;
-        const id = el.dataset.toggleCat;
-        expandedCatId = (expandedCatId===id) ? null : id;
+        expandedCatId = el.dataset.openCat;
         render();
       };
     });
+    const catDetailClose = document.getElementById('catDetailClose');
+    if(catDetailClose) catDetailClose.onclick = ()=>{ expandedCatId = null; render(); };
     document.querySelectorAll('[data-edit-cat]').forEach(b=>{
       b.onclick = ()=>{ editCatId = b.dataset.editCat; render(); };
     });
