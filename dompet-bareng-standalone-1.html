@@ -330,8 +330,8 @@
 
   .toast{
     position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px);
-    background:var(--ink); color:#fff; font-size:13px; font-weight:600;
-    padding:10px 18px; border-radius:20px; box-shadow:0 4px 16px rgba(0,0,0,0.25);
+    background:var(--green); color:#0E1116; font-size:13px; font-weight:700;
+    padding:10px 18px; border-radius:20px; box-shadow:0 4px 16px rgba(0,0,0,0.35);
     opacity:0; pointer-events:none; transition:opacity .25s ease, transform .25s ease;
     z-index:200;
   }
@@ -360,7 +360,6 @@
 <script>
 (function(){
   const FIREBASE_URL = 'https://budget-tracker-ff313-default-rtdb.asia-southeast1.firebasedatabase.app';
-  const FIREBASE_PATH = '/our-money-data.json';
   const LS_CACHE_KEY = 'dompetBarengCache';
 
   // Beberapa browser (terutama Safari) memblokir localStorage saat file dibuka
@@ -455,17 +454,63 @@
 
   // ============ REMOTE SYNC (Firebase Realtime Database) ============
   async function fetchRemote(){
-    const res = await fetch(FIREBASE_URL + FIREBASE_PATH, {cache:'no-store'});
+    const res = await fetch(FIREBASE_URL + '/.json', {cache:'no-store'});
     if(!res.ok) throw new Error('Gagal memuat data (status '+res.status+')');
     const data = await res.json();
-    return data || {wallets:[],categories:[],transactions:[]};
+    let wallets = Object.values((data && data.wallets) || {});
+    let categories = Object.values((data && data.categories) || {});
+    let transactions = Object.values((data && data.transactions) || {});
+
+    // Migrasi otomatis dari struktur lama (array tunggal di /our-money-data.json)
+    // kalau struktur baru masih kosong tapi data lama ternyata ada.
+    if(wallets.length===0 && categories.length===0 && transactions.length===0){
+      try{
+        const legacyRes = await fetch(FIREBASE_URL + '/our-money-data.json', {cache:'no-store'});
+        if(legacyRes.ok){
+          const legacy = await legacyRes.json();
+          if(legacy && ((legacy.wallets||[]).length || (legacy.categories||[]).length || (legacy.transactions||[]).length)){
+            wallets = legacy.wallets || [];
+            categories = legacy.categories || [];
+            transactions = legacy.transactions || [];
+            await pushRemoteBulk({wallets, categories, transactions});
+          }
+        }
+      }catch(e){ /* kalau migrasi gagal, biarkan kosong daripada gagal total */ }
+    }
+
+    return {wallets, categories, transactions};
   }
 
-  async function pushRemote(data){
-    const res = await fetch(FIREBASE_URL + FIREBASE_PATH, {
+  function toKeyedObj(arr){
+    const o = {};
+    arr.forEach(item=>{ o[item.id] = item; });
+    return o;
+  }
+
+  async function saveItem(collection, item){
+    const res = await fetch(FIREBASE_URL+'/'+collection+'/'+item.id+'.json', {
       method:'PUT',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(data)
+      body: JSON.stringify(item)
+    });
+    if(!res.ok) throw new Error('Gagal menyimpan ke server (status '+res.status+')');
+  }
+
+  async function deleteRemoteItem(collection, id){
+    const res = await fetch(FIREBASE_URL+'/'+collection+'/'+id+'.json', { method:'DELETE' });
+    if(!res.ok) throw new Error('Gagal menghapus di server (status '+res.status+')');
+  }
+
+  async function pushRemoteBulk(newState){
+    const payload = {
+      wallets: toKeyedObj(newState.wallets),
+      categories: toKeyedObj(newState.categories),
+      transactions: toKeyedObj(newState.transactions)
+    };
+    const res = await fetch(FIREBASE_URL + '/.json', {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
     });
     if(!res.ok) throw new Error('Gagal menyimpan ke server (status '+res.status+')');
   }
@@ -512,12 +557,44 @@
     toastTimer = setTimeout(()=>{ el.classList.remove('show'); }, 1800);
   }
 
-  async function persist(){
+  // Simpan satu item (dompet/kategori/transaksi) ke path-nya sendiri di Firebase,
+  // supaya penambahan/edit dari dua HP sekaligus tidak saling menimpa.
+  async function persistSave(collection, item){
     cacheLocally();
     saving = true;
     render();
     try{
-      await pushRemote(state);
+      await saveItem(collection, item);
+      statusMsg = null;
+      showToast('✓ Tersimpan');
+    } catch(e){
+      statusMsg = {type:'offline', text:'Perubahan tersimpan di HP ini tapi belum berhasil sinkron ke server. Coba tombol Sinkron ulang.'};
+    }
+    saving = false;
+    render();
+  }
+
+  async function persistDelete(collection, id){
+    cacheLocally();
+    saving = true;
+    render();
+    try{
+      await deleteRemoteItem(collection, id);
+      statusMsg = null;
+      showToast('✓ Tersimpan');
+    } catch(e){
+      statusMsg = {type:'offline', text:'Perubahan tersimpan di HP ini tapi belum berhasil sinkron ke server. Coba tombol Sinkron ulang.'};
+    }
+    saving = false;
+    render();
+  }
+
+  async function persistBulkReplace(){
+    cacheLocally();
+    saving = true;
+    render();
+    try{
+      await pushRemoteBulk(state);
       statusMsg = null;
       showToast('✓ Tersimpan');
     } catch(e){
@@ -1048,10 +1125,11 @@
     document.querySelectorAll('[data-del-tx-modal]').forEach(b=>{
       b.onclick = async ()=>{
         if(!confirm('Hapus transaksi ini?')) return;
-        state.transactions = state.transactions.filter(t=>t.id!==b.dataset.delTxModal);
+        const delId = b.dataset.delTxModal;
+        state.transactions = state.transactions.filter(t=>t.id!==delId);
         detailTxId = null;
         render();
-        await persist();
+        await persistDelete('transactions', delId);
       };
     });
     document.querySelectorAll('[data-edit-tx-modal]').forEach(b=>{
@@ -1114,7 +1192,7 @@
       state = { wallets: parsed.wallets, categories: parsed.categories, transactions: parsed.transactions };
       showCodePanel = false;
       render();
-      await persist();
+      await persistBulkReplace();
     };
 
     const addWalletBtn = document.getElementById('addWalletBtn');
@@ -1124,16 +1202,18 @@
       const start = parseAmountInput('wStart');
       const includeInTotal = document.getElementById('wIncludeTotal').checked;
       if(!name){ alert('Nama dompet tidak boleh kosong'); return; }
-      state.wallets.push({id:uid(), name, type, startBalance:start, includeInTotal});
+      const newWallet = {id:uid(), name, type, startBalance:start, includeInTotal};
+      state.wallets.push(newWallet);
       render();
-      await persist();
+      await persistSave('wallets', newWallet);
     };
     document.querySelectorAll('[data-del-wallet]').forEach(b=>{
       b.onclick = async ()=>{
         if(!confirm('Hapus dompet ini? Transaksi terkait tetap tersimpan.')) return;
-        state.wallets = state.wallets.filter(w=>w.id!==b.dataset.delWallet);
+        const delId = b.dataset.delWallet;
+        state.wallets = state.wallets.filter(w=>w.id!==delId);
         render();
-        await persist();
+        await persistDelete('wallets', delId);
       };
     });
     document.querySelectorAll('[data-edit-wallet]').forEach(b=>{
@@ -1154,7 +1234,7 @@
         w.includeInTotal = document.getElementById('ewIncludeTotal_'+id).checked;
         editWalletId = null;
         render();
-        await persist();
+        await persistSave('wallets', w);
       };
     });
 
@@ -1173,16 +1253,18 @@
       const icon = document.getElementById('cIcon').value;
       const budget = parseAmountInput('cBudget');
       if(!name){ alert('Nama kategori tidak boleh kosong'); return; }
-      state.categories.push({id:uid(), name, icon, budget});
+      const newCat = {id:uid(), name, icon, budget};
+      state.categories.push(newCat);
       render();
-      await persist();
+      await persistSave('categories', newCat);
     };
     document.querySelectorAll('[data-del-cat]').forEach(b=>{
       b.onclick = async ()=>{
         if(!confirm('Hapus kategori ini?')) return;
-        state.categories = state.categories.filter(c=>c.id!==b.dataset.delCat);
+        const delId = b.dataset.delCat;
+        state.categories = state.categories.filter(c=>c.id!==delId);
         render();
-        await persist();
+        await persistDelete('categories', delId);
       };
     });
     document.querySelectorAll('[data-toggle-cat]').forEach(el=>{
@@ -1210,7 +1292,7 @@
         c.budget = parseAmountInput('ecBudget_'+id);
         editCatId = null;
         render();
-        await persist();
+        await persistSave('categories', c);
       };
     });
 
@@ -1236,14 +1318,15 @@
       }
       state.transactions.push(tx);
       render();
-      await persist();
+      await persistSave('transactions', tx);
     };
     document.querySelectorAll('[data-del-tx]').forEach(b=>{
       b.onclick = async ()=>{
         if(!confirm('Hapus transaksi ini?')) return;
-        state.transactions = state.transactions.filter(t=>t.id!==b.dataset.delTx);
+        const delId = b.dataset.delTx;
+        state.transactions = state.transactions.filter(t=>t.id!==delId);
         render();
-        await persist();
+        await persistDelete('transactions', delId);
       };
     });
     document.querySelectorAll('[data-edit-tx]').forEach(b=>{
@@ -1287,7 +1370,7 @@
         editTxId = null;
         editTxType = null;
         render();
-        await persist();
+        await persistSave('transactions', t);
       };
     });
 
@@ -1303,9 +1386,10 @@
         document.querySelectorAll('[data-del-tx]').forEach(b=>{
           b.onclick = async ()=>{
             if(!confirm('Hapus transaksi ini?')) return;
-            state.transactions = state.transactions.filter(t=>t.id!==b.dataset.delTx);
+            const delId = b.dataset.delTx;
+            state.transactions = state.transactions.filter(t=>t.id!==delId);
             render();
-            await persist();
+            await persistDelete('transactions', delId);
           };
         });
         document.querySelectorAll('[data-edit-tx]').forEach(b=>{
