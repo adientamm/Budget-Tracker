@@ -384,7 +384,7 @@
     background:var(--paper); border-top:1px solid rgba(255,255,255,0.08);
   }
   .tx-add-bottom-actions button{ flex:1; padding:13px 0; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; }
-  .tx-add-bottom-actions .cancel-btn{ background:none; border:1px solid rgba(255,255,255,0.2); color:var(--ink-soft); }
+  .tx-add-bottom-actions .cancel-btn{ background:none; border:1px solid var(--red); color:var(--red); }
   .tx-add-bottom-actions .save-btn{ background:var(--gold-dark); border:none; color:#1a1a1a; }
 
   .cat-detail-page{
@@ -1048,24 +1048,24 @@
 
     html += '<div class="tx-add-type-toggle">';
     ['income','expense','transfer'].forEach(t=>{
-      const label = t==='expense'?'EXPENSE':t==='income'?'INCOME':'TRANSFER';
+      const label = t==='expense'?'PENGELUARAN':t==='income'?'PEMASUKAN':'TRANSFER';
       const active = txTypeDraft===t;
       html += '<button data-type="'+t+'" class="'+(active?'active':'')+'"><span class="dot">'+(active?'✓':'')+'</span>'+label+'</button>';
     });
     html += '</div>';
 
     html += '<div class="tx-add-picker-row">';
-    html += '<div class="field-mini"><label>'+(txTypeDraft==='transfer'?'Dari Dompet':'Account')+'</label><select class="tx-add-picker" id="tWallet">'+state.wallets.map(w=>'<option value="'+w.id+'"'+(txWalletDraft===w.id?' selected':'')+'>'+esc(w.name)+'</option>').join('')+'</select></div>';
+    html += '<div class="field-mini"><label>'+(txTypeDraft==='transfer'?'Dari Dompet':'Dompet')+'</label><select class="tx-add-picker" id="tWallet">'+state.wallets.map(w=>'<option value="'+w.id+'"'+(txWalletDraft===w.id?' selected':'')+'>'+esc(w.name)+'</option>').join('')+'</select></div>';
     if(txTypeDraft==='transfer'){
       html += '<div class="field-mini"><label>Ke Dompet</label><select class="tx-add-picker" id="tToWallet">'+state.wallets.map(w=>'<option value="'+w.id+'"'+(txToWalletDraft===w.id?' selected':'')+'>'+esc(w.name)+'</option>').join('')+'</select></div>';
     } else if(txTypeDraft==='expense'){
-      html += '<div class="field-mini"><label>Category</label><select class="tx-add-picker" id="tCategory"><option value="">- Tanpa kategori -</option>'+state.categories.map(c=>'<option value="'+c.id+'"'+(txCategoryDraft===c.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></div>';
+      html += '<div class="field-mini"><label>Kategori</label><select class="tx-add-picker" id="tCategory"><option value="">- Tanpa kategori -</option>'+state.categories.map(c=>'<option value="'+c.id+'"'+(txCategoryDraft===c.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></div>';
     } else {
       html += '<div class="field-mini"><label>&nbsp;</label><div style="height:44px;"></div></div>';
     }
     html += '</div>';
 
-    html += '<textarea class="tx-add-notes" id="tNote" placeholder="Add notes">'+esc(txNoteDraft)+'</textarea>';
+    html += '<textarea class="tx-add-notes" id="tNote" placeholder="Tambah catatan">'+esc(txNoteDraft)+'</textarea>';
 
     html += '<div class="tx-add-amount-box"><div class="amt" id="tAmountDisplay">'+(txAmountDraft||'0')+'</div><button id="tAmountBackspace" title="Hapus">⌫</button></div>';
 
@@ -1085,7 +1085,7 @@
 
     html += '</div>';
 
-    html += '<div class="tx-add-bottom-actions"><button class="cancel-btn" id="txCancelBtn">✕ CANCEL</button><button class="save-btn" id="addTxBtn">✓ SAVE</button></div>';
+    html += '<div class="tx-add-bottom-actions"><button class="cancel-btn" id="txCancelBtn">✕ BATAL</button><button class="save-btn" id="addTxBtn">✓ SIMPAN</button></div>';
 
     return html;
   }
