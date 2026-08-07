@@ -696,7 +696,7 @@
   }
 
   function renderTabButtons(){
-    return ['dashboard','wallets','categories','transactions'].map(t=>{
+    return ['dashboard','transactions','categories','wallets'].map(t=>{
       const label = t==='dashboard'?'Ringkasan':t==='wallets'?'Dompet':t==='categories'?'Kategori':'Transaksi';
       return '<button class="tab-btn'+(currentTab===t?' active':'')+'" data-tab="'+t+'">'+tabIconSvg(t)+label+'</button>';
     }).join('');
