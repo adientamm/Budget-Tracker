@@ -792,9 +792,6 @@
     }
     html += '</div>';
 
-    html += '<div class="ledger-sheet no-rule"><h2>Transaksi — '+monthName+'</h2>';
-    html += renderTxList(state.transactions.filter(t=>monthKey(t.date)===m).slice().sort(txSortDesc).slice(0,8));
-    html += '</div>';
     return html;
   }
 
