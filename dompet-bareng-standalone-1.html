@@ -1149,9 +1149,6 @@
   function renderTxList(list, compact){
     if(list.length===0) return '<div class="empty-state">Belum ada transaksi.</div>';
     return list.map(t=>{
-      if(t.id===editTxId){
-        return renderTxEditForm(t);
-      }
       const sign = t.type==='income' ? '+' : t.type==='expense' ? '-' : '⇄';
       const dateStr = new Date(t.date+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'short'});
       const catName = (t.type==='expense' && t.categoryId) ? catLabel(t.categoryId) : null;
@@ -1173,7 +1170,9 @@
   }
 
   function renderTxEditForm(t){
-    let html = '<div class="tx-item" style="flex-direction:column;align-items:stretch;">';
+    let html = '<div class="tx-modal-backdrop" id="txEditModalBackdrop"><div class="tx-modal">';
+    html += '<div class="tx-modal-top"><button class="tx-modal-close" id="txEditModalClose" title="Tutup">✕</button></div>';
+    html += '<div class="tx-modal-body" style="border-top:none;padding-top:0;">';
     html += '<div class="type-toggle" style="margin-bottom:10px;">';
     ['expense','income','transfer'].forEach(ty=>{
       const label = ty==='expense'?'Pengeluaran':ty==='income'?'Pemasukan':'Transfer';
@@ -1193,8 +1192,9 @@
     }
     html += field('Catatan', '<input id="etNote" value="'+esc(t.note||'')+'">', 'span2');
     html += '</div>';
-    html += '<div style="display:flex;gap:8px;"><button class="btn gold small" data-save-tx="'+t.id+'">Simpan</button><button class="btn ghost small" data-cancel-edit-tx="1">Batal</button></div>';
     html += '</div>';
+    html += '<div class="tx-modal-actions"><button class="btn ghost" id="txEditCancelBtn">Batal</button><button class="btn gold" data-save-tx="'+t.id+'">Simpan</button></div>';
+    html += '</div></div>';
     return html;
   }
 
@@ -1277,6 +1277,10 @@
     if(detailTxId){
       const t = state.transactions.find(x=>x.id===detailTxId);
       if(t) html += renderTxDetailModal(t); else detailTxId = null;
+    }
+    if(editTxId){
+      const et = state.transactions.find(x=>x.id===editTxId);
+      if(et) html += renderTxEditForm(et); else { editTxId = null; editTxType = null; }
     }
     if(txFormOpen){
       html += renderTxAddModal();
@@ -1618,6 +1622,14 @@
     document.querySelectorAll('[data-cancel-edit-tx]').forEach(b=>{
       b.onclick = ()=>{ editTxId = null; editTxType = null; render(); };
     });
+    const txEditModalClose = document.getElementById('txEditModalClose');
+    if(txEditModalClose) txEditModalClose.onclick = ()=>{ editTxId = null; editTxType = null; render(); };
+    const txEditCancelBtn = document.getElementById('txEditCancelBtn');
+    if(txEditCancelBtn) txEditCancelBtn.onclick = ()=>{ editTxId = null; editTxType = null; render(); };
+    const txEditModalBackdrop = document.getElementById('txEditModalBackdrop');
+    if(txEditModalBackdrop) txEditModalBackdrop.onclick = (e)=>{
+      if(e.target === txEditModalBackdrop){ editTxId = null; editTxType = null; render(); }
+    };
     document.querySelectorAll('[data-edit-type]').forEach(b=>{
       b.onclick = ()=>{ editTxType = b.dataset.editType; render(); };
     });
