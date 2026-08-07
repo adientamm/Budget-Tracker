@@ -365,17 +365,22 @@
     background:var(--paper-card); border:1px solid rgba(255,255,255,0.15);
     border-radius:10px; padding:16px 18px; margin-bottom:10px; min-height:70px;
   }
-  .tx-add-amount-box .amt{ font-family:'IBM Plex Mono',monospace; font-size:34px; font-weight:700; color:var(--gold); flex:1; text-align:right; word-break:break-all; }
+  .tx-add-amount-box .amt-wrap{ flex:1; text-align:right; }
+  .tx-add-amount-box .amt-expr{ font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--ink-soft); min-height:16px; }
+  .tx-add-amount-box .amt{ font-family:'IBM Plex Mono',monospace; font-size:32px; font-weight:700; color:var(--gold); word-break:break-all; }
   .tx-add-amount-box button{
     background:none; border:none; color:var(--ink-soft); font-size:20px; cursor:pointer; flex-shrink:0;
   }
-  .tx-numpad{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+  .tx-numpad{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; }
   .tx-numpad button{
     background:var(--paper-card); border:1px solid rgba(255,255,255,0.1);
-    color:var(--ink); font-size:20px; font-weight:600; border-radius:10px;
-    padding:16px 0; cursor:pointer; font-family:'IBM Plex Mono',monospace;
+    color:var(--ink); font-size:19px; font-weight:600; border-radius:10px;
+    padding:15px 0; cursor:pointer; font-family:'IBM Plex Mono',monospace;
   }
   .tx-numpad button:active{ background:rgba(255,255,255,0.08); }
+  .tx-numpad button.calc-op{ background:var(--paper-card-alt); color:var(--gold); font-weight:700; }
+  .tx-numpad button.calc-op.active{ background:var(--gold-dark); color:#1a1a1a; }
+  .tx-numpad button.calc-eq{ background:var(--gold-dark); color:#1a1a1a; border:none; font-weight:700; }
   .tx-add-date-row{ display:flex; gap:10px; margin-bottom:6px; }
   .tx-add-date-row .field-mini{ flex:1; }
   .tx-add-bottom-actions{
@@ -463,6 +468,9 @@
   let txTypeDraft = 'expense';
   let txFormOpen = false;
   let txAmountDraft = '';
+  let txCalcAcc = null;
+  let txCalcOp = null;
+  let txCalcJustEvaluated = false;
   let txNoteDraft = '';
   let txWalletDraft = null;
   let txToWalletDraft = null;
@@ -1067,12 +1075,14 @@
 
     html += '<textarea class="tx-add-notes" id="tNote" placeholder="Tambah catatan">'+esc(txNoteDraft)+'</textarea>';
 
-    html += '<div class="tx-add-amount-box"><div class="amt" id="tAmountDisplay">'+(txAmountDraft||'0')+'</div><button id="tAmountBackspace" title="Hapus">⌫</button></div>';
+    html += '<div class="tx-add-amount-box"><div class="amt-wrap"><div class="amt-expr" id="tAmountExpr">'+((txCalcOp && txCalcAcc!==null) ? (formatAmountDisplay(String(txCalcAcc))+' '+txCalcOp) : '')+'</div><div class="amt" id="tAmountDisplay">'+formatAmountDisplay(currentCalcDisplayRaw())+'</div></div><button id="tAmountBackspace" title="Hapus">⌫</button></div>';
 
     html += '<div class="tx-numpad">';
-    ['7','8','9','4','5','6','1','2','3','.','0','ok'].forEach(k=>{
-      if(k==='ok'){
-        html += '<button data-num="ok" style="background:var(--gold-dark);color:#1a1a1a;border:none;">OK</button>';
+    ['7','8','9','÷','4','5','6','×','1','2','3','-',',','0','=','+'].forEach(k=>{
+      if(k==='='){
+        html += '<button data-num="=" class="calc-eq">=</button>';
+      } else if(['÷','×','-','+'].includes(k)){
+        html += '<button data-num="'+k+'" class="calc-op'+(txCalcOp===k?' active':'')+'">'+k+'</button>';
       } else {
         html += '<button data-num="'+k+'">'+k+'</button>';
       }
@@ -1200,6 +1210,40 @@
     if(!fab) return;
     const shouldShow = dataLoaded && !showCodePanel && state.wallets.length>0;
     fab.style.display = shouldShow ? 'flex' : 'none';
+  }
+
+  function formatAmountDisplay(raw){
+    if(raw===''||raw===null||raw===undefined) return '0';
+    const neg = String(raw).startsWith('-');
+    let s = String(raw).replace('-','');
+    const parts = s.split('.');
+    let intPart = parts[0].replace(/\D/g,'') || '0';
+    intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    let out = intPart;
+    if(parts.length>1) out += ','+parts[1];
+    return (neg?'-':'')+out;
+  }
+
+  function calcApply(a, op, b){
+    a = Number(a)||0; b = Number(b)||0;
+    if(op==='+') return a+b;
+    if(op==='-') return a-b;
+    if(op==='×') return a*b;
+    if(op==='÷') return b===0 ? 0 : a/b;
+    return b;
+  }
+
+  function currentCalcDisplayRaw(){
+    if(txAmountDraft!=='') return txAmountDraft;
+    if(txCalcAcc!==null) return String(txCalcAcc);
+    return '';
+  }
+
+  function updateAmountDisplay(){
+    const disp = document.getElementById('tAmountDisplay');
+    if(disp) disp.textContent = formatAmountDisplay(currentCalcDisplayRaw());
+    const exprEl = document.getElementById('tAmountExpr');
+    if(exprEl) exprEl.textContent = (txCalcOp && txCalcAcc!==null) ? (formatAmountDisplay(String(txCalcAcc))+' '+txCalcOp) : '';
   }
 
   function render(){
@@ -1452,6 +1496,9 @@
     if(openTxFormBtn) openTxFormBtn.onclick = ()=>{
       txFormOpen = true;
       txAmountDraft = '';
+      txCalcAcc = null;
+      txCalcOp = null;
+      txCalcJustEvaluated = false;
       txNoteDraft = '';
       txCategoryDraft = '';
       txWalletDraft = state.wallets[0] ? state.wallets[0].id : null;
@@ -1478,25 +1525,47 @@
     document.querySelectorAll('.tx-numpad button[data-num]').forEach(b=>{
       b.onclick = ()=>{
         const k = b.dataset.num;
-        if(k==='ok'){
-          document.getElementById('addTxBtn').click();
-          return;
-        }
-        if(k==='.'){
+        if(k===','){
+          if(txCalcJustEvaluated){ txAmountDraft=''; txCalcJustEvaluated=false; }
           if(!txAmountDraft.includes('.')) txAmountDraft += (txAmountDraft===''?'0.':'.');
+        } else if(['+','-','×','÷'].includes(k)){
+          if(txAmountDraft!==''){
+            if(txCalcOp!==null && txCalcAcc!==null){
+              txCalcAcc = calcApply(txCalcAcc, txCalcOp, parseFloat(txAmountDraft)||0);
+            } else {
+              txCalcAcc = parseFloat(txAmountDraft)||0;
+            }
+          } else if(txCalcAcc===null){
+            txCalcAcc = 0;
+          }
+          txCalcOp = k;
+          txAmountDraft = '';
+          txCalcJustEvaluated = false;
+          render();
+          return;
+        } else if(k==='='){
+          if(txCalcOp!==null){
+            const b2 = txAmountDraft==='' ? txCalcAcc : (parseFloat(txAmountDraft)||0);
+            const result = calcApply(txCalcAcc, txCalcOp, b2);
+            txAmountDraft = String(result);
+            txCalcAcc = null;
+            txCalcOp = null;
+            txCalcJustEvaluated = true;
+          }
+          render();
+          return;
         } else {
+          if(txCalcJustEvaluated){ txAmountDraft=''; txCalcJustEvaluated=false; }
           if(txAmountDraft==='0') txAmountDraft = k;
           else txAmountDraft += k;
         }
-        const disp = document.getElementById('tAmountDisplay');
-        if(disp) disp.textContent = txAmountDraft || '0';
+        updateAmountDisplay();
       };
     });
     const tAmountBackspace = document.getElementById('tAmountBackspace');
     if(tAmountBackspace) tAmountBackspace.onclick = ()=>{
       txAmountDraft = txAmountDraft.slice(0,-1);
-      const disp = document.getElementById('tAmountDisplay');
-      if(disp) disp.textContent = txAmountDraft || '0';
+      updateAmountDisplay();
     };
 
     const txCancelBtn = document.getElementById('txCancelBtn');
@@ -1504,6 +1573,11 @@
 
     const addTxBtn = document.getElementById('addTxBtn');
     if(addTxBtn) addTxBtn.onclick = async ()=>{
+      if(txCalcOp!==null){
+        const b2 = txAmountDraft==='' ? txCalcAcc : (parseFloat(txAmountDraft)||0);
+        txAmountDraft = String(calcApply(txCalcAcc, txCalcOp, b2));
+        txCalcAcc = null; txCalcOp = null;
+      }
       const amount = parseFloat(txAmountDraft)||0;
       const date = txDateDraft || todayStr();
       const time = nowTimeStr();
@@ -1623,6 +1697,9 @@
     showCodePanel = false;
     txFormOpen = true;
     txAmountDraft = '';
+    txCalcAcc = null;
+    txCalcOp = null;
+    txCalcJustEvaluated = false;
     txNoteDraft = '';
     txCategoryDraft = '';
     txWalletDraft = state.wallets[0] ? state.wallets[0].id : null;
