@@ -533,7 +533,7 @@
     const s = Math.abs(num).toLocaleString('id-ID');
     return (neg ? '-Rp ' : 'Rp ') + s;
   };
-  const todayStr = () => new Date().toISOString().slice(0,10);
+  const todayStr = () => { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
   const nowTimeStr = () => { const d = new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
   const txSortKey = (t) => t.date + 'T' + (t.time || '00:00') + '_' + t.id;
   const txSortDesc = (a,b) => txSortKey(b).localeCompare(txSortKey(a));
