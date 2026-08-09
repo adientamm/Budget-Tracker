@@ -728,6 +728,10 @@
     return state.wallets.slice().sort((a,b)=>a.name.localeCompare(b.name,'id',{sensitivity:'base'}));
   }
 
+  function sortedCategories(){
+    return state.categories.slice().sort((a,b)=>a.name.localeCompare(b.name,'id',{sensitivity:'base'}));
+  }
+
   function walletIcon(type){
     const t = (type||'').toLowerCase();
     if(t.includes('cash')) return '💵';
@@ -1088,7 +1092,7 @@
 
     html += '<div class="ledger-sheet no-rule"><h2>Riwayat Transaksi</h2>';
     html += '<div class="filter-row">';
-    html += '<select id="filterWallet"><option value="">Semua Dompet</option>'+state.wallets.map(w=>'<option value="'+w.id+'">'+esc(w.name)+'</option>').join('')+'</select>';
+    html += '<select id="filterWallet"><option value="">Semua Dompet</option>'+sortedWallets().map(w=>'<option value="'+w.id+'">'+esc(w.name)+'</option>').join('')+'</select>';
     html += '<select id="filterType"><option value="">Semua Jenis</option><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option><option value="transfer">Transfer</option></select>';
     html += '</div>';
     html += '<div id="txListWrap">'+renderGroupedTxList(state.transactions.slice().sort(txSortDesc))+'</div></div>';
@@ -1124,11 +1128,11 @@
     html += '</div>';
 
     html += '<div class="tx-add-picker-row">';
-    html += '<div class="field-mini"><label>'+(txTypeDraft==='transfer'?'Dari Dompet':'Dompet')+'</label><select class="tx-add-picker" id="tWallet">'+state.wallets.map(w=>'<option value="'+w.id+'"'+(txWalletDraft===w.id?' selected':'')+'>'+esc(w.name)+'</option>').join('')+'</select></div>';
+    html += '<div class="field-mini"><label>'+(txTypeDraft==='transfer'?'Dari Dompet':'Dompet')+'</label><select class="tx-add-picker" id="tWallet">'+sortedWallets().map(w=>'<option value="'+w.id+'"'+(txWalletDraft===w.id?' selected':'')+'>'+esc(w.name)+'</option>').join('')+'</select></div>';
     if(txTypeDraft==='transfer'){
-      html += '<div class="field-mini"><label>Ke Dompet</label><select class="tx-add-picker" id="tToWallet">'+state.wallets.map(w=>'<option value="'+w.id+'"'+(txToWalletDraft===w.id?' selected':'')+'>'+esc(w.name)+'</option>').join('')+'</select></div>';
+      html += '<div class="field-mini"><label>Ke Dompet</label><select class="tx-add-picker" id="tToWallet">'+sortedWallets().map(w=>'<option value="'+w.id+'"'+(txToWalletDraft===w.id?' selected':'')+'>'+esc(w.name)+'</option>').join('')+'</select></div>';
     } else if(txTypeDraft==='expense'){
-      html += '<div class="field-mini"><label>Kategori</label><select class="tx-add-picker" id="tCategory"><option value="">- Tanpa kategori -</option>'+state.categories.map(c=>'<option value="'+c.id+'"'+(txCategoryDraft===c.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></div>';
+      html += '<div class="field-mini"><label>Kategori</label><select class="tx-add-picker" id="tCategory"><option value="">- Tanpa kategori -</option>'+sortedCategories().map(c=>'<option value="'+c.id+'"'+(txCategoryDraft===c.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select></div>';
     } else {
       html += '<div class="field-mini"><label>&nbsp;</label><div style="height:44px;"></div></div>';
     }
@@ -1232,12 +1236,12 @@
     html += field('Jumlah', '<input id="etAmount" type="text" inputmode="numeric" value="'+Number(t.amount).toLocaleString('id-ID')+'">');
     html += field('Tanggal', '<input id="etDate" type="date" value="'+t.date+'">');
     html += field('Jam', '<input id="etTime" type="time" value="'+(t.time||'00:00')+'">');
-    html += field(editTxType==='transfer' ? 'Dari Dompet' : 'Dompet', '<select id="etWallet">'+(state.wallets.find(w=>w.id===t.walletId)?'':'<option value="" selected disabled>(dompet dihapus) - pilih baru</option>')+state.wallets.map(w=>'<option value="'+w.id+'"'+(w.id===t.walletId?' selected':'')+'>'+esc(w.name)+'</option>').join('')+'</select>');
+    html += field(editTxType==='transfer' ? 'Dari Dompet' : 'Dompet', '<select id="etWallet">'+(state.wallets.find(w=>w.id===t.walletId)?'':'<option value="" selected disabled>(dompet dihapus) - pilih baru</option>')+sortedWallets().map(w=>'<option value="'+w.id+'"'+(w.id===t.walletId?' selected':'')+'>'+esc(w.name)+'</option>').join('')+'</select>');
     if(editTxType==='transfer'){
-      html += field('Ke Dompet', '<select id="etToWallet">'+(state.wallets.find(w=>w.id===t.toWalletId)?'':'<option value="" selected disabled>(dompet dihapus) - pilih baru</option>')+state.wallets.map(w=>'<option value="'+w.id+'"'+(w.id===t.toWalletId?' selected':'')+'>'+esc(w.name)+'</option>').join('')+'</select>');
+      html += field('Ke Dompet', '<select id="etToWallet">'+(state.wallets.find(w=>w.id===t.toWalletId)?'':'<option value="" selected disabled>(dompet dihapus) - pilih baru</option>')+sortedWallets().map(w=>'<option value="'+w.id+'"'+(w.id===t.toWalletId?' selected':'')+'>'+esc(w.name)+'</option>').join('')+'</select>');
     }
     if(editTxType==='expense'){
-      html += field('Kategori', '<select id="etCategory"><option value="">- Tanpa kategori -</option>'+state.categories.map(c=>'<option value="'+c.id+'"'+(c.id===t.categoryId?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select>');
+      html += field('Kategori', '<select id="etCategory"><option value="">- Tanpa kategori -</option>'+sortedCategories().map(c=>'<option value="'+c.id+'"'+(c.id===t.categoryId?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select>');
     }
     html += field('Catatan', '<input id="etNote" value="'+esc(t.note||'')+'">', 'span2');
     html += '</div>';
