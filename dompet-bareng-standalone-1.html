@@ -1674,7 +1674,12 @@
     const tDateInput = document.getElementById('tDate');
     if(tDateInput) tDateInput.onchange = ()=>{ txDateDraft = tDateInput.value; };
     const tNoteInput = document.getElementById('tNote');
-    if(tNoteInput) tNoteInput.oninput = ()=>{ txNoteDraft = tNoteInput.value; };
+    if(tNoteInput){
+      tNoteInput.oninput = ()=>{ txNoteDraft = tNoteInput.value; };
+      tNoteInput.addEventListener('keydown', (e)=>{
+        if(e.key==='Enter'){ e.preventDefault(); tNoteInput.blur(); }
+      });
+    }
 
     document.querySelectorAll('.tx-numpad button[data-num]').forEach(b=>{
       b.onclick = ()=>{
