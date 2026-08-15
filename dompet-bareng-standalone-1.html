@@ -150,6 +150,15 @@
     box-shadow:0 1px 3px rgba(255,255,255,0.06);
   }
   .cat-row:last-child{ margin-bottom:0; }
+
+  .note-card{
+    background:var(--paper-card-alt); border:1px solid rgba(255,255,255,0.10);
+    border-radius:8px; padding:12px 14px; margin-bottom:8px; cursor:pointer;
+  }
+  .note-card:last-child{ margin-bottom:0; }
+  .note-title{ font-weight:700; font-size:14.5px; margin-bottom:4px; }
+  .note-snippet{ font-size:13px; color:var(--ink-soft); margin-bottom:6px; line-height:1.4; }
+  .note-date{ font-size:11px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; }
   .cat-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; flex-wrap:wrap; gap:4px; }
   .cat-name{ font-weight:600; font-size:15px; display:flex; align-items:center; gap:9px; }
   .cat-icon-badge{
@@ -484,7 +493,7 @@
     }
   };
 
-  let state = { wallets:[], categories:[], transactions:[] };
+  let state = { wallets:[], categories:[], transactions:[], notes:[] };
   let storageBlocked = false;
   try{ localStorage.getItem('__test__'); } catch(e){ storageBlocked = true; }
   let currentTab = 'dashboard';
@@ -503,6 +512,8 @@
   let editCatId = null;
   let walletFormOpen = false;
   let catFormOpen = false;
+  let noteFormOpen = false;
+  let editNoteId = null;
   let editTxId = null;
   let detailTxId = null;
   let editTxType = null;
@@ -522,6 +533,11 @@
   }
   function monthLabelShort(m){
     return new Date(m+'-01').toLocaleDateString('id-ID',{month:'long'});
+  }
+  function noteDateLabel(dateStr){
+    if(!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('id-ID',{day:'2-digit', month:'short', year:'numeric'})+' · '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
   }
   let statusMsg = null; // {type:'info'|'error'|'offline', text}
   let dataLoaded = false;
@@ -579,6 +595,7 @@
     let wallets = Object.values((data && data.wallets) || {});
     let categories = Object.values((data && data.categories) || {});
     let transactions = Object.values((data && data.transactions) || {});
+    let notes = Object.values((data && data.notes) || {});
 
     // Migrasi otomatis dari struktur lama (array tunggal di /our-money-data.json)
     // kalau struktur baru masih kosong tapi data lama ternyata ada.
@@ -597,7 +614,7 @@
       }catch(e){ /* kalau migrasi gagal, biarkan kosong daripada gagal total */ }
     }
 
-    return {wallets, categories, transactions};
+    return {wallets, categories, transactions, notes};
   }
 
   function toKeyedObj(arr){
@@ -624,7 +641,8 @@
     const payload = {
       wallets: toKeyedObj(newState.wallets),
       categories: toKeyedObj(newState.categories),
-      transactions: toKeyedObj(newState.transactions)
+      transactions: toKeyedObj(newState.transactions),
+      notes: toKeyedObj(newState.notes||[])
     };
     const res = await fetch(FIREBASE_URL + '/.json', {
       method:'PUT',
@@ -651,6 +669,7 @@
       state.wallets = data.wallets || [];
       state.categories = data.categories || [];
       state.transactions = data.transactions || [];
+      state.notes = data.notes || [];
       statusMsg = null;
       cacheLocally();
     } catch(e){
@@ -836,6 +855,7 @@
     if(t==='dashboard') return '<svg '+common+'><rect x="4" y="10" width="3.5" height="10" rx="1"/><rect x="10.25" y="4" width="3.5" height="16" rx="1"/><rect x="16.5" y="13" width="3.5" height="7" rx="1"/></svg>';
     if(t==='wallets') return '<svg '+common+'><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M16 5H7a2 2 0 0 0-2 2"/><circle cx="17" cy="13" r="1" fill="currentColor" stroke="none"/></svg>';
     if(t==='categories') return '<svg '+common+'><path d="m20.59 13.41-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1" fill="currentColor" stroke="none"/></svg>';
+    if(t==='notes') return '<svg '+common+'><path d="M14 3v5h5"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>';
     return '<svg '+common+'><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/></svg>';
   }
 
@@ -852,8 +872,8 @@
   }
 
   function renderTabButtons(){
-    return ['dashboard','transactions','categories','wallets'].map(t=>{
-      const label = t==='dashboard'?'Ringkasan':t==='wallets'?'Dompet':t==='categories'?'Budget':'Transaksi';
+    return ['dashboard','transactions','categories','wallets','notes'].map(t=>{
+      const label = t==='dashboard'?'Ringkasan':t==='wallets'?'Dompet':t==='categories'?'Budget':t==='notes'?'Catatan':'Transaksi';
       return '<button class="tab-btn'+(currentTab===t?' active':'')+'" data-tab="'+t+'">'+tabIconSvg(t)+label+'</button>';
     }).join('');
   }
@@ -980,6 +1000,38 @@
     html += '</div>';
     html += '<div class="tx-modal-actions"><button class="cancel-btn" id="walletEditCancelBtn">✕ BATAL</button><button class="save-btn" data-save-wallet="'+w.id+'">✓ SIMPAN</button></div>';
     html += '</div></div>';
+    return html;
+  }
+
+  function renderNoteEditModal(n){
+    const isNew = !n;
+    const note = n || {id:null, title:'', body:'', updatedAt:new Date().toISOString()};
+    let html = '<div class="tx-modal-backdrop" id="noteEditModalBackdrop"><div class="tx-modal">';
+    html += '<div class="tx-modal-top"><div class="tx-modal-title">'+(isNew?'Tambah Catatan':'Edit Catatan')+'</div><button class="tx-modal-close" id="noteEditModalClose" title="Tutup">✕</button></div>';
+    html += '<div class="tx-modal-body" style="border-top:none;padding-top:0;">';
+    html += field('Judul', '<input id="nTitle" placeholder="Judul catatan" value="'+esc(note.title)+'">', 'span2');
+    html += '<textarea id="nBody" class="tx-add-notes" style="min-height:180px;" placeholder="Tulis catatan di sini...">'+esc(note.body)+'</textarea>';
+    html += '</div>';
+    html += '<div class="tx-modal-actions">'+(isNew?'':'<button class="btn danger small" id="deleteNoteBtn" data-note-id="'+note.id+'" style="flex:0 0 auto;padding:13px 16px;">Hapus</button>')+'<button class="cancel-btn" id="noteEditCancelBtn">✕ BATAL</button><button class="save-btn" id="saveNoteBtn" data-note-id="'+(note.id||'')+'">✓ SIMPAN</button></div>';
+    html += '</div></div>';
+    return html;
+  }
+
+  function renderNotes(){
+    let html = '<div class="ledger-sheet no-rule"><h2>Semua Catatan</h2>';
+    if(state.notes.length===0){
+      html += '<div class="empty-state">Belum ada catatan. Tap + Tambah Catatan di atas.</div>';
+    } else {
+      state.notes.slice().sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||'')).forEach(n=>{
+        const snippet = (n.body||'').replace(/\n/g,' ').slice(0,90);
+        html += '<div class="note-card" data-open-note="'+n.id+'">';
+        html += '<div class="note-title">'+esc(n.title||'(tanpa judul)')+'</div>';
+        if(snippet) html += '<div class="note-snippet">'+esc(snippet)+(n.body && n.body.length>90?'…':'')+'</div>';
+        html += '<div class="note-date">'+noteDateLabel(n.updatedAt)+'</div>';
+        html += '</div>';
+      });
+    }
+    html += '</div>';
     return html;
   }
 
@@ -1321,6 +1373,9 @@
     if(!showCodePanel && currentTab==='transactions' && state.wallets.length>0){
       html += '<div class="sticky-top-inner"><button class="btn gold full" id="openTxFormBtn">+ Tambah Transaksi</button></div>';
     }
+    if(!showCodePanel && currentTab==='notes'){
+      html += '<div class="sticky-top-inner"><button class="btn gold full" id="openNoteFormBtn">+ Tambah Catatan</button></div>';
+    }
     html += '</div>';
     html += '<nav class="tabs">'+renderTabButtons()+'</nav>';
     html += '<main>';
@@ -1335,6 +1390,7 @@
       else if(currentTab==='wallets') html += renderWallets();
       else if(currentTab==='categories') html += renderCategories();
       else if(currentTab==='transactions') html += renderTransactions();
+      else if(currentTab==='notes') html += renderNotes();
     }
     html += '</main>';
     if(detailTxId){
@@ -1361,6 +1417,13 @@
     if(editCatId){
       const ec = state.categories.find(x=>x.id===editCatId);
       if(ec) html += renderCatEditModal(ec); else editCatId = null;
+    }
+    if(noteFormOpen){
+      html += renderNoteEditModal(null);
+    }
+    if(editNoteId){
+      const en = state.notes.find(x=>x.id===editNoteId);
+      if(en) html += renderNoteEditModal(en); else editNoteId = null;
     }
     if(expandedCatId){
       html += renderCatDetailPage(expandedCatId);
@@ -1486,7 +1549,7 @@
         return;
       }
       if(!confirm('Ini akan MENIMPA seluruh data di buku kas yang sedang aktif dengan data dari cadangan. Lanjutkan?')) return;
-      state = { wallets: parsed.wallets, categories: parsed.categories, transactions: parsed.transactions };
+      state = { wallets: parsed.wallets, categories: parsed.categories, transactions: parsed.transactions, notes: Array.isArray(parsed.notes) ? parsed.notes : [] };
       showCodePanel = false;
       render();
       await persistBulkReplace();
@@ -1649,6 +1712,49 @@
         render();
       };
     });
+
+    const openNoteFormBtn = document.getElementById('openNoteFormBtn');
+    if(openNoteFormBtn) openNoteFormBtn.onclick = ()=>{ noteFormOpen = true; render(); };
+    document.querySelectorAll('[data-open-note]').forEach(el=>{
+      el.onclick = ()=>{ editNoteId = el.dataset.openNote; render(); };
+    });
+    const noteEditModalClose = document.getElementById('noteEditModalClose');
+    if(noteEditModalClose) noteEditModalClose.onclick = ()=>{ noteFormOpen = false; editNoteId = null; render(); };
+    const noteEditCancelBtn = document.getElementById('noteEditCancelBtn');
+    if(noteEditCancelBtn) noteEditCancelBtn.onclick = ()=>{ noteFormOpen = false; editNoteId = null; render(); };
+    const noteEditModalBackdrop = document.getElementById('noteEditModalBackdrop');
+    if(noteEditModalBackdrop) noteEditModalBackdrop.onclick = (e)=>{
+      if(e.target === noteEditModalBackdrop){ noteFormOpen = false; editNoteId = null; render(); }
+    };
+    const saveNoteBtn = document.getElementById('saveNoteBtn');
+    if(saveNoteBtn) saveNoteBtn.onclick = async ()=>{
+      const title = document.getElementById('nTitle').value.trim();
+      const body = document.getElementById('nBody').value;
+      if(!title && !body.trim()){ alert('Isi judul atau catatan dulu'); return; }
+      if(saveNoteBtn.disabled) return;
+      saveNoteBtn.disabled = true; saveNoteBtn.textContent = '... Menyimpan';
+      const existingId = saveNoteBtn.dataset.noteId;
+      const note = existingId
+        ? state.notes.find(x=>x.id===existingId)
+        : {id:uid()};
+      note.title = title;
+      note.body = body;
+      note.updatedAt = new Date().toISOString();
+      if(!existingId) state.notes.push(note);
+      noteFormOpen = false;
+      editNoteId = null;
+      await persistSave('notes', note);
+      render();
+    };
+    const deleteNoteBtn = document.getElementById('deleteNoteBtn');
+    if(deleteNoteBtn) deleteNoteBtn.onclick = async ()=>{
+      const id = deleteNoteBtn.dataset.noteId;
+      if(!confirm('Hapus catatan ini?')) return;
+      state.notes = state.notes.filter(n=>n.id!==id);
+      editNoteId = null;
+      render();
+      await persistDelete('notes', id);
+    };
 
     const openTxFormBtn = document.getElementById('openTxFormBtn');
     if(openTxFormBtn) openTxFormBtn.onclick = ()=>{
