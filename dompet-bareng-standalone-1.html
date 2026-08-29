@@ -476,6 +476,8 @@
 <script>
 (function(){
   const FIREBASE_URL = 'https://budget-tracker-ff313-default-rtdb.asia-southeast1.firebasedatabase.app';
+  const FIREBASE_API_KEY = 'AIzaSyAwRTvUZ80I1-2K-K8wtnxjTW2BAChhdAA';
+  const LS_AUTH_KEY = 'dompetBarengAuth';
   const LS_CACHE_KEY = 'dompetBarengCache';
 
   // Beberapa browser (terutama Safari) memblokir localStorage saat file dibuka
@@ -588,8 +590,70 @@
   function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
   // ============ REMOTE SYNC (Firebase Realtime Database) ============
+  // ============ AUTH (Anonymous) ============
+  let authToken = null;
+  let authExpiresAt = 0;
+
+  function loadStoredAuth(){
+    try{
+      const raw = safeStorage.get(LS_AUTH_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }catch(e){ return null; }
+  }
+  function saveStoredAuth(a){
+    try{ safeStorage.set(LS_AUTH_KEY, JSON.stringify(a)); }catch(e){}
+  }
+
+  async function signInAnonymously(){
+    const res = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signUp?key='+FIREBASE_API_KEY, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({returnSecureToken:true})
+    });
+    if(!res.ok) throw new Error('Gagal login otomatis ke server');
+    const data = await res.json();
+    return {idToken:data.idToken, refreshToken:data.refreshToken, expiresAt: Date.now() + (Number(data.expiresIn)||3600)*1000};
+  }
+
+  async function refreshAuthToken(refreshToken){
+    const res = await fetch('https://securetoken.googleapis.com/v1/token?key='+FIREBASE_API_KEY, {
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body: 'grant_type=refresh_token&refresh_token='+encodeURIComponent(refreshToken)
+    });
+    if(!res.ok) throw new Error('Gagal memperbarui sesi login');
+    const data = await res.json();
+    return {idToken:data.id_token, refreshToken:data.refresh_token, expiresAt: Date.now() + (Number(data.expires_in)||3600)*1000};
+  }
+
+  async function ensureAuth(){
+    const stored = loadStoredAuth();
+    if(stored && stored.idToken && stored.expiresAt > Date.now() + 60000){
+      authToken = stored.idToken;
+      authExpiresAt = stored.expiresAt;
+      return;
+    }
+    let fresh;
+    if(stored && stored.refreshToken){
+      try{
+        fresh = await refreshAuthToken(stored.refreshToken);
+      }catch(e){
+        fresh = await signInAnonymously();
+      }
+    } else {
+      fresh = await signInAnonymously();
+    }
+    authToken = fresh.idToken;
+    authExpiresAt = fresh.expiresAt;
+    saveStoredAuth(fresh);
+  }
+
+  function withAuth(url){
+    return url + (url.includes('?') ? '&' : '?') + 'auth=' + encodeURIComponent(authToken||'');
+  }
+
   async function fetchRemote(){
-    const res = await fetch(FIREBASE_URL + '/.json', {cache:'no-store'});
+    const res = await fetch(withAuth(FIREBASE_URL + '/.json'), {cache:'no-store'});
     if(!res.ok) throw new Error('Gagal memuat data (status '+res.status+')');
     const data = await res.json();
     let wallets = Object.values((data && data.wallets) || {});
@@ -601,7 +665,7 @@
     // kalau struktur baru masih kosong tapi data lama ternyata ada.
     if(wallets.length===0 && categories.length===0 && transactions.length===0){
       try{
-        const legacyRes = await fetch(FIREBASE_URL + '/our-money-data.json', {cache:'no-store'});
+        const legacyRes = await fetch(withAuth(FIREBASE_URL + '/our-money-data.json'), {cache:'no-store'});
         if(legacyRes.ok){
           const legacy = await legacyRes.json();
           if(legacy && ((legacy.wallets||[]).length || (legacy.categories||[]).length || (legacy.transactions||[]).length)){
@@ -624,7 +688,7 @@
   }
 
   async function saveItem(collection, item){
-    const res = await fetch(FIREBASE_URL+'/'+collection+'/'+item.id+'.json', {
+    const res = await fetch(withAuth(FIREBASE_URL+'/'+collection+'/'+item.id+'.json'), {
       method:'PUT',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify(item)
@@ -633,7 +697,7 @@
   }
 
   async function deleteRemoteItem(collection, id){
-    const res = await fetch(FIREBASE_URL+'/'+collection+'/'+id+'.json', { method:'DELETE' });
+    const res = await fetch(withAuth(FIREBASE_URL+'/'+collection+'/'+id+'.json'), { method:'DELETE' });
     if(!res.ok) throw new Error('Gagal menghapus di server (status '+res.status+')');
   }
 
@@ -644,7 +708,7 @@
       transactions: toKeyedObj(newState.transactions),
       notes: toKeyedObj(newState.notes||[])
     };
-    const res = await fetch(FIREBASE_URL + '/.json', {
+    const res = await fetch(withAuth(FIREBASE_URL + '/.json'), {
       method:'PUT',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify(payload)
@@ -665,6 +729,7 @@
   async function loadFromRemote(showLoading){
     if(showLoading){ dataLoaded=false; render(); }
     try{
+      await ensureAuth();
       const data = await fetchRemote();
       state.wallets = data.wallets || [];
       state.categories = data.categories || [];
@@ -702,6 +767,7 @@
     saving = true;
     render();
     try{
+      await ensureAuth();
       await saveItem(collection, item);
       statusMsg = null;
       showToast('✓ Tersimpan');
@@ -717,6 +783,7 @@
     saving = true;
     render();
     try{
+      await ensureAuth();
       await deleteRemoteItem(collection, id);
       statusMsg = null;
       showToast('✓ Tersimpan');
@@ -732,6 +799,7 @@
     saving = true;
     render();
     try{
+      await ensureAuth();
       await pushRemoteBulk(state);
       statusMsg = null;
       showToast('✓ Tersimpan');
