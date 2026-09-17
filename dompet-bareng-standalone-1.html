@@ -141,6 +141,11 @@
     border-top:1.5px dashed rgba(255,255,255,0.25);
     margin:2px 0 12px;
   }
+  .outside-budget-row{
+    background:var(--paper-card-alt); border:1px dashed rgba(255,255,255,0.15);
+    border-radius:8px; padding:10px 12px; margin-bottom:12px;
+    font-size:13px; color:var(--ink-soft);
+  }
   .cat-row{
     background:var(--paper-card-alt);
     border:1px solid rgba(255,255,255,0.10);
@@ -518,6 +523,7 @@
   let editWalletId = null;
   let editCatId = null;
   let monthBudgetCatId = null;
+  let txFilterCategoryPreset = null;
   let walletFormOpen = false;
   let catFormOpen = false;
   let noteFormOpen = false;
@@ -1024,11 +1030,16 @@
       let totalBudget = 0, totalSpent = 0;
       state.categories.forEach(c=>{ totalBudget += getCategoryBudget(c, m); totalSpent += categorySpent(c.id, m); });
       const totalSisa = totalBudget - totalSpent;
+      const outsideBudgetSpent = state.transactions.reduce((s,t)=>{
+        if(t.type==='expense' && !t.categoryId && monthKey(t.date)===m) return s + Number(t.amount);
+        return s;
+      },0);
       html += '<div class="quick-stats" style="margin-top:0;margin-bottom:14px;">';
       html += '<div class="quick-stat">Total Budget<br><span class="val mono">'+fmt(totalBudget)+'</span></div>';
       html += '<div class="quick-stat">Total Terpakai<br><span class="val '+(totalSpent>totalBudget?'expense':'income')+' mono">'+fmt(totalSpent)+'</span></div>';
       html += '<div class="quick-stat">Total Sisa Budget<br><span class="val mono" style="color:'+(totalSisa<0?'var(--red)':'var(--green)')+'">'+fmt(totalSisa)+'</span></div>';
       html += '</div>';
+      html += '<div class="outside-budget-row" data-go-tx-nocat="1" style="cursor:pointer;">Pengeluaran Tanpa Kategori (di luar budget) <span class="mono expense" style="float:right;font-weight:700;">'+fmt(outsideBudgetSpent)+'</span></div>';
       html += '<hr class="cat-summary-divider">';
       state.categories.slice().sort((a,b)=>(Number(b.budget)||0)-(Number(a.budget)||0)).forEach(c=>{
         const spent = categorySpent(c.id, m);
@@ -1250,9 +1261,12 @@
     html += '<div class="filter-row">';
     html += '<select id="filterWallet"><option value="">Semua Dompet</option>'+sortedWallets().map(w=>'<option value="'+w.id+'">'+esc(w.name)+'</option>').join('')+'</select>';
     html += '<select id="filterType"><option value="">Semua Jenis</option><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option><option value="transfer">Transfer</option></select>';
-    html += '<select id="filterCategory"><option value="">Semua Kategori</option><option value="__none__">- Tanpa Kategori -</option>'+sortedCategories().map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('')+'</select>';
+    html += '<select id="filterCategory"><option value="">Semua Kategori</option><option value="__none__"'+(txFilterCategoryPreset==='__none__'?' selected':'')+'>- Tanpa Kategori -</option>'+sortedCategories().map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('')+'</select>';
     html += '</div>';
-    html += '<div id="txListWrap">'+renderGroupedTxList(state.transactions.slice().sort(txSortDesc))+'</div></div>';
+    let initialList = state.transactions.slice();
+    if(txFilterCategoryPreset==='__none__') initialList = initialList.filter(t=>t.type==='expense' && !t.categoryId);
+    html += '<div id="txListWrap">'+renderGroupedTxList(initialList.sort(txSortDesc))+'</div></div>';
+    txFilterCategoryPreset = null;
     return html;
   }
 
@@ -1787,6 +1801,14 @@
         if(e.target.closest('[data-edit-cat],[data-del-cat]')) return;
         expandedCatId = el.dataset.openCat;
         render();
+      };
+    });
+    document.querySelectorAll('[data-go-tx-nocat]').forEach(el=>{
+      el.onclick = ()=>{
+        currentTab = 'transactions';
+        txFilterCategoryPreset = '__none__';
+        render();
+        window.scrollTo({top:0, behavior:'smooth'});
       };
     });
     const catDetailClose = document.getElementById('catDetailClose');
