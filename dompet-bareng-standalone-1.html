@@ -1250,7 +1250,7 @@
     });
     order.sort().reverse();
     return order.map(key=>{
-      return '<div class="month-group-label">'+monthLabel(key)+'</div>' + renderTxList(groups[key]);
+      return '<div class="month-group-label">'+monthLabel(key)+'</div>' + renderTxList(groups[key], true);
     }).join('');
   }
 
