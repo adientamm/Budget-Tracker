@@ -1250,6 +1250,7 @@
     html += '<div class="filter-row">';
     html += '<select id="filterWallet"><option value="">Semua Dompet</option>'+sortedWallets().map(w=>'<option value="'+w.id+'">'+esc(w.name)+'</option>').join('')+'</select>';
     html += '<select id="filterType"><option value="">Semua Jenis</option><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option><option value="transfer">Transfer</option></select>';
+    html += '<select id="filterCategory"><option value="">Semua Kategori</option><option value="__none__">- Tanpa Kategori -</option>'+sortedCategories().map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('')+'</select>';
     html += '</div>';
     html += '<div id="txListWrap">'+renderGroupedTxList(state.transactions.slice().sort(txSortDesc))+'</div></div>';
     return html;
@@ -2087,11 +2088,14 @@
 
     const fw = document.getElementById('filterWallet');
     const ft = document.getElementById('filterType');
-    if(fw && ft){
+    const fc = document.getElementById('filterCategory');
+    if(fw && ft && fc){
       const applyFilter = ()=>{
         let list = state.transactions.slice();
         if(fw.value) list = list.filter(t=>t.walletId===fw.value || t.toWalletId===fw.value);
         if(ft.value) list = list.filter(t=>t.type===ft.value);
+        if(fc.value==='__none__') list = list.filter(t=>t.type==='expense' && !t.categoryId);
+        else if(fc.value) list = list.filter(t=>t.categoryId===fc.value);
         list.sort(txSortDesc);
         document.getElementById('txListWrap').innerHTML = renderGroupedTxList(list);
         document.querySelectorAll('[data-del-tx]').forEach(b=>{
@@ -2115,6 +2119,7 @@
       };
       fw.onchange = applyFilter;
       ft.onchange = applyFilter;
+      fc.onchange = applyFilter;
     }
   }
 
