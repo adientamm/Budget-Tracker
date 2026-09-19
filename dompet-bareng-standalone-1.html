@@ -990,10 +990,7 @@
     if(c.budgetOverrides && Object.prototype.hasOwnProperty.call(c.budgetOverrides, m)){
       return Number(c.budgetOverrides[m])||0;
     }
-    if(c.budgetOverrides){
-      return 0;
-    }
-    return Number(c.budget)||0;
+    return 0;
   }
   function previousCategoryBudget(c, m){
     if(c.budgetOverrides){
