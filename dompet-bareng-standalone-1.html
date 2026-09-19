@@ -1343,7 +1343,8 @@
     html += '<div class="tx-modal-body" style="border-top:none;padding-top:0;">';
     html += field('Nama Kategori', '<input id="ecName" value="'+esc(c.name)+'">');
     html += field('Ikon', iconPickerGrid('ecIcon', categoryIconKeyFor(c)), 'span2');
-    html += '<div class="field span2" style="font-size:11.5px;color:var(--ink-soft);text-transform:none;">Nominal budget diatur lewat tombol "Budget Bulan Ini" di menu kategori, per bulan.</div>';
+    html += '<div class="field span2" style="font-size:11.5px;color:var(--ink-soft);text-transform:none;">Nominal budget diatur lewat tombol "Edit Budget" di menu kategori, per bulan.</div>';
+    html += '<div class="field span2" style="margin-top:6px;"><button type="button" class="btn danger small" id="delCatFullyBtn" data-cat-id="'+c.id+'">🗑 Hapus Kategori (dari semua bulan)</button></div>';
     html += '</div>';
     html += '<div class="tx-modal-actions"><button class="cancel-btn" id="catEditCancelBtn">✕ BATAL</button><button class="save-btn" data-save-cat="'+c.id+'">✓ SIMPAN</button></div>';
     html += '</div></div>';
@@ -2119,6 +2120,19 @@
     const catEditModalBackdrop = document.getElementById('catEditModalBackdrop');
     if(catEditModalBackdrop) catEditModalBackdrop.onclick = (e)=>{
       if(e.target === catEditModalBackdrop){ editCatId = null; render(); }
+    };
+    const delCatFullyBtn = document.getElementById('delCatFullyBtn');
+    if(delCatFullyBtn) delCatFullyBtn.onclick = async ()=>{
+      const delId = delCatFullyBtn.dataset.catId;
+      const usedCount = state.transactions.filter(t=>t.categoryId===delId).length;
+      const warnMsg = usedCount>0
+        ? 'Kategori ini masih dipakai di '+usedCount+' transaksi. Transaksi itu akan tetap ada tapi menunjuk ke kategori yang sudah dihapus. Kategori akan hilang dari SEMUA bulan. Yakin mau hapus?'
+        : 'Hapus kategori ini dari semua bulan? Tidak bisa dibatalkan.';
+      if(!confirm(warnMsg)) return;
+      state.categories = state.categories.filter(c=>c.id!==delId);
+      editCatId = null;
+      render();
+      await persistDelete('categories', delId);
     };
     document.querySelectorAll('[data-save-cat]').forEach(b=>{
       b.onclick = async ()=>{
