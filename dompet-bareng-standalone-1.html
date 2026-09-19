@@ -990,16 +990,19 @@
     if(c.budgetOverrides && Object.prototype.hasOwnProperty.call(c.budgetOverrides, m)){
       return Number(c.budgetOverrides[m])||0;
     }
+    if(c.budgetOverrides){
+      return 0;
+    }
     return Number(c.budget)||0;
   }
-  function suggestedCategoryBudget(c, m){
+  function previousCategoryBudget(c, m){
     if(c.budgetOverrides){
       const keys = Object.keys(c.budgetOverrides).filter(k=>k<m).sort();
       if(keys.length>0){
         return Number(c.budgetOverrides[keys[keys.length-1]])||0;
       }
     }
-    return Number(c.budget)||0;
+    return 0;
   }
   function walletLabel(id){ const w = state.wallets.find(x=>x.id===id); return w ? w.name : '(dompet dihapus)'; }
 
@@ -1325,7 +1328,7 @@
     html += '<div class="form-grid">';
     html += field('Nama Kategori', '<input id="cName" placeholder="cth. Makan, Kucing, Cicilan">');
     html += field('Ikon', iconPickerGrid('cIcon', CAT_ICONS[0]), 'span2');
-    html += field('Budget per Bulan', '<input id="cBudget" type="text" inputmode="numeric" placeholder="0">', 'span2');
+    html += field('Budget Bulan Ini', '<input id="cBudget" type="text" inputmode="numeric" placeholder="0">', 'span2');
     html += '</div>';
     html += '</div>';
     html += '<div class="tx-modal-actions"><button class="cancel-btn" id="catAddCancelBtn">✕ BATAL</button><button class="save-btn" id="addCatBtn">✓ SIMPAN</button></div>';
@@ -1349,19 +1352,23 @@
   function renderMonthBudgetModal(c){
     const m = getSelectedMonth();
     const hasOverride = c.budgetOverrides && Object.prototype.hasOwnProperty.call(c.budgetOverrides, m);
-    const currentVal = hasOverride ? c.budgetOverrides[m] : suggestedCategoryBudget(c, m);
+    const currentVal = hasOverride ? c.budgetOverrides[m] : 0;
+    const prevVal = previousCategoryBudget(c, m);
     let html = '<div class="tx-modal-backdrop" id="monthBudgetModalBackdrop"><div class="tx-modal">';
     html += '<div class="tx-modal-top"><div class="tx-modal-title">Budget '+esc(c.name)+' — '+monthLabel(m)+'</div><button class="tx-modal-close" id="monthBudgetModalClose" title="Tutup">✕</button></div>';
     html += '<div class="tx-modal-body" style="border-top:none;padding-top:0;">';
     html += field('Budget bulan ini', '<input id="mbAmount" type="text" inputmode="numeric" value="'+Number(currentVal||0).toLocaleString('id-ID')+'">', 'span2');
+    if(!hasOverride && prevVal>0){
+      html += '<div class="field span2"><button type="button" class="btn ghost small" id="mbCopyPrevBtn" data-copy-amount="'+prevVal+'">⤴ Salin dari Bulan Lalu (Rp '+prevVal.toLocaleString('id-ID')+')</button></div>';
+    }
     html += '<div class="field span2" style="font-size:11.5px;color:var(--ink-soft);text-transform:none;">'+
       (hasOverride
-        ? 'Angka ini sudah diatur khusus untuk bulan ini. Mengubahnya tidak akan mengubah bulan-bulan sebelumnya, dan akan jadi patokan untuk bulan berikutnya sampai diubah lagi.'
-        : 'Angka di atas mengikuti budget bulan sebelumnya (bisa diedit). Menyimpan akan membuat budget khusus bulan ini, tanpa mengubah bulan-bulan sebelumnya.')+
+        ? 'Angka ini sudah diatur khusus untuk bulan ini. Mengubahnya tidak akan mengubah bulan-bulan lain.'
+        : 'Budget bulan ini belum diatur (0). Isi angkanya sendiri, atau salin dari bulan lalu lalu edit kalau perlu. Menyimpan tidak akan mengubah bulan-bulan lain.')+
       '</div>';
     html += '</div>';
     html += '<div class="tx-modal-actions">'+
-      (hasOverride ? '<button class="btn ghost small" id="mbResetBtn" data-cat-id="'+c.id+'" style="flex:0 0 auto;padding:13px 14px;">Batalkan Khusus</button>' : '')+
+      (hasOverride ? '<button class="btn ghost small" id="mbResetBtn" data-cat-id="'+c.id+'" style="flex:0 0 auto;padding:13px 14px;">Hapus Budget</button>' : '')+
       '<button class="cancel-btn" id="monthBudgetCancelBtn">✕ BATAL</button><button class="save-btn" id="mbSaveBtn" data-cat-id="'+c.id+'">✓ SIMPAN</button></div>';
     html += '</div></div>';
     return html;
@@ -2013,7 +2020,8 @@
       if(!name){ alert('Nama kategori tidak boleh kosong'); return; }
       if(addCatBtn.disabled) return;
       addCatBtn.disabled = true; addCatBtn.textContent = '... Menyimpan';
-      const newCat = {id:uid(), name, icon, budget};
+      const m = getSelectedMonth();
+      const newCat = {id:uid(), name, icon, budgetOverrides: budget>0 ? {[m]: budget} : {}};
       state.categories.push(newCat);
       catFormOpen = false;
       await persistSave('categories', newCat);
@@ -2100,6 +2108,12 @@
       if(e.target === monthBudgetModalBackdrop){ monthBudgetCatId = null; render(); }
     };
     const mbSaveBtn = document.getElementById('mbSaveBtn');
+    const mbCopyPrevBtn = document.getElementById('mbCopyPrevBtn');
+    if(mbCopyPrevBtn) mbCopyPrevBtn.onclick = ()=>{
+      const amt = Number(mbCopyPrevBtn.dataset.copyAmount)||0;
+      const input = document.getElementById('mbAmount');
+      if(input) input.value = amt.toLocaleString('id-ID');
+    };
     if(mbSaveBtn) mbSaveBtn.onclick = async ()=>{
       const id = mbSaveBtn.dataset.catId;
       const c = state.categories.find(x=>x.id===id);
