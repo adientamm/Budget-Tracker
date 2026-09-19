@@ -908,7 +908,30 @@
 
   // ============ CALCULATIONS ============
   function sortedWallets(){
-    return state.wallets.slice().sort((a,b)=>a.name.localeCompare(b.name,'id',{sensitivity:'base'}));
+    return state.wallets.slice().sort((a,b)=>{
+      const oa = (typeof a.order==='number') ? a.order : 999999;
+      const ob = (typeof b.order==='number') ? b.order : 999999;
+      if(oa!==ob) return oa-ob;
+      return a.name.localeCompare(b.name,'id',{sensitivity:'base'});
+    });
+  }
+
+  async function moveWallet(id, dir){
+    const list = sortedWallets();
+    const idx = list.findIndex(w=>w.id===id);
+    if(idx<0) return;
+    const swapIdx = idx + dir;
+    if(swapIdx<0 || swapIdx>=list.length) return;
+    const before = list.map(w=>w.order);
+    list.forEach((w,i)=>{ w.order = i; });
+    const tmp = list[idx].order; list[idx].order = list[swapIdx].order; list[swapIdx].order = tmp;
+    state.wallets = state.wallets.map(w=>{
+      const updated = list.find(x=>x.id===w.id);
+      return updated || w;
+    });
+    render();
+    const changed = list.filter((w,i)=>before[i]!==w.order);
+    for(const w of changed){ await persistSave('wallets', w); }
   }
 
   function sortedCategories(){
@@ -1277,7 +1300,7 @@
         html += '<div class="wallet-row-mid"><div class="wallet-row-name">'+esc(w.name)+(excluded?' <span class="wallet-row-tag">di luar total</span>':'')+'</div>';
         html += '<div class="wallet-row-balance">Saldo: <span class="mono '+(bal<0?'expense':'income')+'">'+fmt(bal)+'</span></div></div>';
         html += '<button class="wallet-row-menu-btn" data-wallet-menu="'+w.id+'">•••</button>';
-        html += '<div class="wallet-row-menu" id="walletMenu_'+w.id+'"><button data-edit-wallet="'+w.id+'">Edit</button><button data-del-wallet="'+w.id+'" class="danger">Hapus</button></div>';
+        html += '<div class="wallet-row-menu" id="walletMenu_'+w.id+'"><button data-move-wallet-up="'+w.id+'">▲ Naik</button><button data-move-wallet-down="'+w.id+'">▼ Turun</button><button data-edit-wallet="'+w.id+'">Edit</button><button data-del-wallet="'+w.id+'" class="danger">Hapus</button></div>';
         html += '</div>';
       });
       html += '</div>';
@@ -1859,7 +1882,7 @@
       if(!name){ alert('Nama dompet tidak boleh kosong'); return; }
       if(addWalletBtn.disabled) return;
       addWalletBtn.disabled = true; addWalletBtn.textContent = '... Menyimpan';
-      const newWallet = {id:uid(), name, type, startBalance:start, includeInTotal};
+      const newWallet = {id:uid(), name, type, startBalance:start, includeInTotal, order: state.wallets.length};
       state.wallets.push(newWallet);
       walletFormOpen = false;
       await persistSave('wallets', newWallet);
@@ -1897,6 +1920,12 @@
         document.querySelectorAll('.cat-row-menu.show').forEach(m=>m.classList.remove('show'));
         if(!isOpen) menu.classList.add('show');
       };
+    });
+    document.querySelectorAll('[data-move-wallet-up]').forEach(b=>{
+      b.onclick = (e)=>{ e.stopPropagation(); moveWallet(b.dataset.moveWalletUp, -1); };
+    });
+    document.querySelectorAll('[data-move-wallet-down]').forEach(b=>{
+      b.onclick = (e)=>{ e.stopPropagation(); moveWallet(b.dataset.moveWalletDown, 1); };
     });
     document.querySelectorAll('[data-edit-wallet]').forEach(b=>{
       b.onclick = ()=>{ editWalletId = b.dataset.editWallet; render(); };
@@ -2004,7 +2033,7 @@
     });
     document.querySelectorAll('[data-open-wallet]').forEach(el=>{
       el.onclick = (e)=>{
-        if(e.target.closest('[data-wallet-menu],[data-edit-wallet],[data-del-wallet],.wallet-row-menu')) return;
+        if(e.target.closest('[data-wallet-menu],[data-edit-wallet],[data-del-wallet],[data-move-wallet-up],[data-move-wallet-down],.wallet-row-menu')) return;
         expandedWalletId = el.dataset.openWallet;
         render();
       };
