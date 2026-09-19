@@ -575,6 +575,7 @@
   let editWalletId = null;
   let editCatId = null;
   let monthBudgetCatId = null;
+  let addExistingCatOpen = false;
   let txFilterCategoryPreset = null;
   let walletFormOpen = false;
   let catFormOpen = false;
@@ -1189,11 +1190,14 @@
     html += '</div>';
 
     html += '<div class="ledger-sheet no-rule"><h2>Budget Kategori — '+monthName+'</h2>';
+    const dashBudgetedCats = state.categories.filter(c=>c.budgetOverrides && Object.prototype.hasOwnProperty.call(c.budgetOverrides, m));
     if(state.categories.length===0){
       html += '<div class="empty-state">Belum ada kategori budget. Tambah di tab Budget.</div>';
+    } else if(dashBudgetedCats.length===0){
+      html += '<div class="empty-state">Belum ada budget yang diatur bulan ini. Atur di tab Budget.</div>';
     } else {
       let totalBudget = 0, totalSpent = 0;
-      state.categories.forEach(c=>{ totalBudget += getCategoryBudget(c, m); totalSpent += categorySpent(c.id, m); });
+      dashBudgetedCats.forEach(c=>{ totalBudget += getCategoryBudget(c, m); totalSpent += categorySpent(c.id, m); });
       const totalSisa = totalBudget - totalSpent;
       const outsideBudgetSpent = state.transactions.reduce((s,t)=>{
         if(t.type==='expense' && !t.categoryId && monthKey(t.date)===m) return s + Number(t.amount);
@@ -1209,7 +1213,7 @@
         '<div class="mono expense" style="font-weight:700;font-size:14px;white-space:nowrap;">'+fmt(outsideBudgetSpent)+'</div>'+
         '</div>';
       html += '<hr class="cat-summary-divider">';
-      state.categories.slice().sort((a,b)=>(Number(b.budget)||0)-(Number(a.budget)||0)).forEach(c=>{
+      dashBudgetedCats.slice().sort((a,b)=>getCategoryBudget(b,m)-getCategoryBudget(a,m)).forEach(c=>{
         const spent = categorySpent(c.id, m);
         const budget = getCategoryBudget(c, m);
         const sisa = budget - spent;
@@ -1373,12 +1377,17 @@
 
   function renderCategories(){
     const m = getSelectedMonth();
+    const budgetedCats = state.categories.filter(c=>c.budgetOverrides && Object.prototype.hasOwnProperty.call(c.budgetOverrides, m));
+    const unbudgetedCats = state.categories.filter(c=>!(c.budgetOverrides && Object.prototype.hasOwnProperty.call(c.budgetOverrides, m)));
+    const hasAnyPastBudget = state.categories.some(c=>previousCategoryBudget(c, m)>0);
     let html = '<div class="ledger-sheet no-rule"><h2>Semua Budget</h2>';
     if(state.categories.length===0){
       html += '<div class="empty-state">Belum ada kategori.</div>';
+    } else if(budgetedCats.length===0){
+      html += '<div class="empty-state">Belum ada budget yang diatur bulan ini.</div>';
     } else {
       let totalBudget = 0, totalSpent = 0;
-      state.categories.forEach(c=>{ totalBudget += getCategoryBudget(c, m); totalSpent += categorySpent(c.id, m); });
+      budgetedCats.forEach(c=>{ totalBudget += getCategoryBudget(c, m); totalSpent += categorySpent(c.id, m); });
       const totalSisa = totalBudget - totalSpent;
       html += '<div class="quick-stats" style="margin-top:0;margin-bottom:14px;">';
       html += '<div class="quick-stat">Total Budget<br><span class="val mono">'+fmt(totalBudget)+'</span></div>';
@@ -1386,10 +1395,9 @@
       html += '<div class="quick-stat">Total Sisa Budget<br><span class="val mono" style="color:'+(totalSisa<0?'var(--red)':'var(--green)')+'">'+fmt(totalSisa)+'</span></div>';
       html += '</div>';
       html += '<hr class="cat-summary-divider">';
-      state.categories.slice().sort((a,b)=>(Number(b.budget)||0)-(Number(a.budget)||0)).forEach((c)=>{
+      budgetedCats.slice().sort((a,b)=>getCategoryBudget(b,m)-getCategoryBudget(a,m)).forEach((c)=>{
         const spent = categorySpent(c.id, m);
         const budget = getCategoryBudget(c, m);
-        const hasOverride = c.budgetOverrides && Object.prototype.hasOwnProperty.call(c.budgetOverrides, m);
         const sisa = budget - spent;
         const pct = budget>0 ? Math.min(100,(spent/budget)*100) : 0;
         const over = budget>0 && spent>budget;
@@ -1403,7 +1411,40 @@
         html += '</div>';
       });
     }
+    if(state.categories.length>0){
+      html += '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">';
+      if(hasAnyPastBudget){
+        html += '<button class="btn ghost small" id="setFromPastMonthsBtn" style="flex:1 1 auto;">⤴ Set dari Bulan Lalu</button>';
+      }
+      if(unbudgetedCats.length>0){
+        html += '<button class="btn ghost small" id="addExistingCatBtn" style="flex:1 1 auto;">+ Kategori Lain</button>';
+      }
+      html += '</div>';
+    }
     html += '</div>';
+    return html;
+  }
+
+  function renderAddExistingCatModal(){
+    const m = getSelectedMonth();
+    const unbudgetedCats = state.categories.filter(c=>!(c.budgetOverrides && Object.prototype.hasOwnProperty.call(c.budgetOverrides, m)));
+    let html = '<div class="tx-modal-backdrop" id="addExistingCatModalBackdrop"><div class="tx-modal">';
+    html += '<div class="tx-modal-top"><div class="tx-modal-title">Tambah Kategori ke '+monthLabel(m)+'</div><button class="tx-modal-close" id="addExistingCatModalClose" title="Tutup">✕</button></div>';
+    html += '<div class="tx-modal-body" style="border-top:none;padding-top:0;">';
+    if(unbudgetedCats.length===0){
+      html += '<div class="empty-state">Semua kategori sudah diatur bulan ini.</div>';
+    } else {
+      html += '<div class="wallet-list">';
+      unbudgetedCats.slice().sort((a,b)=>a.name.localeCompare(b.name,'id',{sensitivity:'base'})).forEach(c=>{
+        html += '<div class="cat-row" data-pick-existing-cat="'+c.id+'" style="cursor:pointer;display:flex;align-items:center;gap:10px;">';
+        html += '<span class="cat-icon-badge">'+categoryIconFor(c)+'</span><span style="font-weight:600;font-size:14.5px;">'+esc(c.name)+'</span>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+    html += '<div class="tx-modal-actions"><button class="cancel-btn" id="addExistingCatCancelBtn">✕ TUTUP</button></div>';
+    html += '</div></div>';
     return html;
   }
 
@@ -1728,6 +1769,9 @@
     if(monthBudgetCatId){
       const mc = state.categories.find(x=>x.id===monthBudgetCatId);
       if(mc) html += renderMonthBudgetModal(mc); else monthBudgetCatId = null;
+    }
+    if(addExistingCatOpen){
+      html += renderAddExistingCatModal();
     }
     if(noteFormOpen){
       html += renderNoteEditModal(null);
@@ -2134,6 +2178,42 @@
       await persistSave('categories', c);
       render();
     };
+
+    const setFromPastMonthsBtn = document.getElementById('setFromPastMonthsBtn');
+    if(setFromPastMonthsBtn) setFromPastMonthsBtn.onclick = async ()=>{
+      const m = getSelectedMonth();
+      const toApply = state.categories.filter(c=>{
+        const already = c.budgetOverrides && Object.prototype.hasOwnProperty.call(c.budgetOverrides, m);
+        return !already && previousCategoryBudget(c, m)>0;
+      });
+      if(toApply.length===0) return;
+      if(!confirm('Salin budget dari bulan lalu untuk '+toApply.length+' kategori ke '+monthLabel(m)+'? Kamu masih bisa edit satu-satu setelahnya.')) return;
+      if(setFromPastMonthsBtn.disabled) return;
+      setFromPastMonthsBtn.disabled = true; setFromPastMonthsBtn.textContent = '... Menyimpan';
+      for(const c of toApply){
+        if(!c.budgetOverrides) c.budgetOverrides = {};
+        c.budgetOverrides[m] = previousCategoryBudget(c, m);
+      }
+      render();
+      for(const c of toApply){ await persistSave('categories', c); }
+    };
+    const addExistingCatBtn = document.getElementById('addExistingCatBtn');
+    if(addExistingCatBtn) addExistingCatBtn.onclick = ()=>{ addExistingCatOpen = true; render(); };
+    const addExistingCatModalClose = document.getElementById('addExistingCatModalClose');
+    if(addExistingCatModalClose) addExistingCatModalClose.onclick = ()=>{ addExistingCatOpen = false; render(); };
+    const addExistingCatCancelBtn = document.getElementById('addExistingCatCancelBtn');
+    if(addExistingCatCancelBtn) addExistingCatCancelBtn.onclick = ()=>{ addExistingCatOpen = false; render(); };
+    const addExistingCatModalBackdrop = document.getElementById('addExistingCatModalBackdrop');
+    if(addExistingCatModalBackdrop) addExistingCatModalBackdrop.onclick = (e)=>{
+      if(e.target === addExistingCatModalBackdrop){ addExistingCatOpen = false; render(); }
+    };
+    document.querySelectorAll('[data-pick-existing-cat]').forEach(el=>{
+      el.onclick = ()=>{
+        addExistingCatOpen = false;
+        monthBudgetCatId = el.dataset.pickExistingCat;
+        render();
+      };
+    });
 
     const openNoteFormBtn = document.getElementById('openNoteFormBtn');
     if(openNoteFormBtn) openNoteFormBtn.onclick = ()=>{ noteFormOpen = true; render(); };
