@@ -1359,7 +1359,7 @@
     html += '<div class="tx-modal-top"><div class="tx-modal-title">Budget '+esc(c.name)+' — '+monthLabel(m)+'</div><button class="tx-modal-close" id="monthBudgetModalClose" title="Tutup">✕</button></div>';
     html += '<div class="tx-modal-body" style="border-top:none;padding-top:0;">';
     html += field('Nominal Budget', '<input id="mbAmount" type="text" inputmode="numeric" value="'+Number(currentVal||0).toLocaleString('id-ID')+'">', 'span2');
-    if(!hasOverride && prevVal>0){
+    if(prevVal>0){
       html += '<div class="field span2"><button type="button" class="btn ghost small" id="mbCopyPrevBtn" data-copy-amount="'+prevVal+'">⤴ Salin dari Bulan Lalu (Rp '+prevVal.toLocaleString('id-ID')+')</button></div>';
     }
     html += '<div class="field span2" style="font-size:11.5px;color:var(--ink-soft);text-transform:none;">'+
@@ -2181,12 +2181,13 @@
     const setFromPastMonthsBtn = document.getElementById('setFromPastMonthsBtn');
     if(setFromPastMonthsBtn) setFromPastMonthsBtn.onclick = async ()=>{
       const m = getSelectedMonth();
-      const toApply = state.categories.filter(c=>{
-        const already = c.budgetOverrides && Object.prototype.hasOwnProperty.call(c.budgetOverrides, m);
-        return !already && previousCategoryBudget(c, m)>0;
-      });
+      const toApply = state.categories.filter(c=>previousCategoryBudget(c, m)>0);
       if(toApply.length===0) return;
-      if(!confirm('Salin budget dari bulan lalu untuk '+toApply.length+' kategori ke '+monthLabel(m)+'? Kamu masih bisa edit satu-satu setelahnya.')) return;
+      const alreadySetCount = toApply.filter(c=>c.budgetOverrides && Object.prototype.hasOwnProperty.call(c.budgetOverrides, m)).length;
+      const msg = alreadySetCount>0
+        ? 'Salin budget dari bulan lalu untuk '+toApply.length+' kategori ke '+monthLabel(m)+'? '+alreadySetCount+' kategori yang sudah punya budget di bulan ini akan ditimpa dengan nilai bulan lalu. Masih bisa diedit satu-satu setelahnya.'
+        : 'Salin budget dari bulan lalu untuk '+toApply.length+' kategori ke '+monthLabel(m)+'? Kamu masih bisa edit satu-satu setelahnya.';
+      if(!confirm(msg)) return;
       if(setFromPastMonthsBtn.disabled) return;
       setFromPastMonthsBtn.disabled = true; setFromPastMonthsBtn.textContent = '... Menyimpan';
       for(const c of toApply){
