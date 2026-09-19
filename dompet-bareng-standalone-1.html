@@ -950,21 +950,22 @@
     if(!w) return '';
     const bal = walletBalance(w.id);
     const col = walletColorFor(w.type);
+    const m = getSelectedMonth();
     const list = state.transactions
-      .filter(t=>t.walletId===walletId || t.toWalletId===walletId)
+      .filter(t=>(t.walletId===walletId || t.toWalletId===walletId) && monthKey(t.date)===m)
       .sort(txSortDesc);
 
     let html = '<div class="cat-detail-page" id="walletDetailPage">';
-    html += '<div class="cat-detail-header"><div><div class="cat-detail-title">'+esc(w.name)+'</div><div class="cat-detail-sub">'+list.length+' transaksi</div></div><button id="walletDetailClose" title="Tutup">✕</button></div>';
+    html += '<div class="cat-detail-header"><div><div class="cat-detail-title">'+esc(w.name)+'</div><div class="cat-detail-sub">'+monthLabel(m)+'</div></div><button id="walletDetailClose" title="Tutup">✕</button></div>';
 
     html += '<div class="ledger-sheet no-rule" style="margin-top:14px;">';
     html += '<div class="cat-top"><span class="cat-name"><span class="wallet-row-icon" style="width:30px;height:30px;border-radius:50%;background:'+col+'22;color:'+col+';">'+walletIcon(w.type)+'</span>'+esc(w.name)+'</span>';
     html += '<span class="cat-figures mono" style="font-size:15.5px;'+(bal<0?'color:var(--red);':'color:var(--green);')+'">'+fmt(bal)+'</span></div>';
     html += '</div>';
 
-    html += '<div class="ledger-sheet no-rule"><h2>Semua Transaksi</h2>';
+    html += '<div class="ledger-sheet no-rule"><h2>'+monthLabel(m)+' : '+list.length+' transaksi</h2>';
     if(list.length===0){
-      html += '<div class="empty-state">Belum ada transaksi di dompet ini.</div>';
+      html += '<div class="empty-state">Belum ada transaksi di dompet ini bulan ini.</div>';
     } else {
       html += renderTxList(list, true);
     }
