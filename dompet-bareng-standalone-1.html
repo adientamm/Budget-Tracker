@@ -990,6 +990,12 @@
     if(c.budgetOverrides && Object.prototype.hasOwnProperty.call(c.budgetOverrides, m)){
       return Number(c.budgetOverrides[m])||0;
     }
+    if(c.budgetOverrides){
+      const keys = Object.keys(c.budgetOverrides).filter(k=>k<m).sort();
+      if(keys.length>0){
+        return Number(c.budgetOverrides[keys[keys.length-1]])||0;
+      }
+    }
     return Number(c.budget)||0;
   }
   function walletLabel(id){ const w = state.wallets.find(x=>x.id===id); return w ? w.name : '(dompet dihapus)'; }
@@ -1330,8 +1336,7 @@
     html += '<div class="tx-modal-body" style="border-top:none;padding-top:0;">';
     html += field('Nama Kategori', '<input id="ecName" value="'+esc(c.name)+'">');
     html += field('Ikon', iconPickerGrid('ecIcon', categoryIconKeyFor(c)), 'span2');
-    html += field('Budget Default (semua bulan)', '<input id="ecBudget" type="text" inputmode="numeric" value="'+Number(c.budget||0).toLocaleString('id-ID')+'">', 'span2');
-    html += '<div class="field span2" style="font-size:11.5px;color:var(--ink-soft);text-transform:none;">Ini dipakai untuk semua bulan, kecuali bulan yang sudah diatur khusus lewat tombol "Budget Bulan Ini".</div>';
+    html += '<div class="field span2" style="font-size:11.5px;color:var(--ink-soft);text-transform:none;">Nominal budget diatur lewat tombol "Budget Bulan Ini" di menu kategori, per bulan.</div>';
     html += '</div>';
     html += '<div class="tx-modal-actions"><button class="cancel-btn" id="catEditCancelBtn">✕ BATAL</button><button class="save-btn" data-save-cat="'+c.id+'">✓ SIMPAN</button></div>';
     html += '</div></div>';
@@ -1341,19 +1346,19 @@
   function renderMonthBudgetModal(c){
     const m = getSelectedMonth();
     const hasOverride = c.budgetOverrides && Object.prototype.hasOwnProperty.call(c.budgetOverrides, m);
-    const currentVal = hasOverride ? c.budgetOverrides[m] : c.budget;
+    const currentVal = getCategoryBudget(c, m);
     let html = '<div class="tx-modal-backdrop" id="monthBudgetModalBackdrop"><div class="tx-modal">';
     html += '<div class="tx-modal-top"><div class="tx-modal-title">Budget '+esc(c.name)+' — '+monthLabel(m)+'</div><button class="tx-modal-close" id="monthBudgetModalClose" title="Tutup">✕</button></div>';
     html += '<div class="tx-modal-body" style="border-top:none;padding-top:0;">';
-    html += field('Budget khusus bulan ini', '<input id="mbAmount" type="text" inputmode="numeric" value="'+Number(currentVal||0).toLocaleString('id-ID')+'">', 'span2');
+    html += field('Budget bulan ini', '<input id="mbAmount" type="text" inputmode="numeric" value="'+Number(currentVal||0).toLocaleString('id-ID')+'">', 'span2');
     html += '<div class="field span2" style="font-size:11.5px;color:var(--ink-soft);text-transform:none;">'+
       (hasOverride
-        ? 'Bulan ini pakai budget khusus. Bulan lain tetap pakai budget default (Rp '+Number(c.budget||0).toLocaleString('id-ID')+').'
-        : 'Saat ini masih pakai budget default. Ubah angka di atas untuk membuat budget khusus bulan ini saja, tidak akan mengubah bulan lain.')+
+        ? 'Angka ini sudah diatur khusus untuk bulan ini. Mengubahnya tidak akan mengubah bulan-bulan sebelumnya, dan akan jadi patokan untuk bulan berikutnya sampai diubah lagi.'
+        : 'Angka di atas mengikuti budget bulan sebelumnya (bisa diedit). Menyimpan akan membuat budget khusus bulan ini, tanpa mengubah bulan-bulan sebelumnya.')+
       '</div>';
     html += '</div>';
     html += '<div class="tx-modal-actions">'+
-      (hasOverride ? '<button class="btn ghost small" id="mbResetBtn" data-cat-id="'+c.id+'" style="flex:0 0 auto;padding:13px 14px;">Pakai Default Lagi</button>' : '')+
+      (hasOverride ? '<button class="btn ghost small" id="mbResetBtn" data-cat-id="'+c.id+'" style="flex:0 0 auto;padding:13px 14px;">Batalkan Khusus</button>' : '')+
       '<button class="cancel-btn" id="monthBudgetCancelBtn">✕ BATAL</button><button class="save-btn" id="mbSaveBtn" data-cat-id="'+c.id+'">✓ SIMPAN</button></div>';
     html += '</div></div>';
     return html;
@@ -2074,7 +2079,6 @@
         b.disabled = true; b.textContent = '... Menyimpan';
         c.name = name;
         c.icon = document.getElementById('ecIcon').value;
-        c.budget = parseAmountInput('ecBudget');
         editCatId = null;
         await persistSave('categories', c);
         render();
