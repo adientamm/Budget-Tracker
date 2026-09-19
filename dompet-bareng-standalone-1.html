@@ -558,6 +558,7 @@
   let detailTxId = null;
   let editTxType = null;
   let expandedCatId = null;
+  let expandedWalletId = null;
   let selectedMonth = null; // diisi 'YYYY-MM', null berarti bulan berjalan
 
   function getSelectedMonth(){ return selectedMonth || todayStr().slice(0,7); }
@@ -943,6 +944,36 @@
     return Number(c.budget)||0;
   }
   function walletLabel(id){ const w = state.wallets.find(x=>x.id===id); return w ? w.name : '(dompet dihapus)'; }
+
+  function renderWalletDetailPage(walletId){
+    const w = state.wallets.find(x=>x.id===walletId);
+    if(!w) return '';
+    const bal = walletBalance(w.id);
+    const col = walletColorFor(w.type);
+    const list = state.transactions
+      .filter(t=>t.walletId===walletId || t.toWalletId===walletId)
+      .sort(txSortDesc);
+
+    let html = '<div class="cat-detail-page" id="walletDetailPage">';
+    html += '<div class="cat-detail-header"><div><div class="cat-detail-title">'+esc(w.name)+'</div><div class="cat-detail-sub">'+list.length+' transaksi</div></div><button id="walletDetailClose" title="Tutup">✕</button></div>';
+
+    html += '<div class="ledger-sheet no-rule" style="margin-top:14px;">';
+    html += '<div class="cat-top"><span class="cat-name"><span class="wallet-row-icon" style="width:30px;height:30px;border-radius:50%;background:'+col+'22;color:'+col+';">'+walletIcon(w.type)+'</span>'+esc(w.name)+'</span>';
+    html += '<span class="cat-figures mono" style="font-size:15.5px;'+(bal<0?'color:var(--red);':'color:var(--green);')+'">'+fmt(bal)+'</span></div>';
+    html += '</div>';
+
+    html += '<div class="ledger-sheet no-rule"><h2>Semua Transaksi</h2>';
+    if(list.length===0){
+      html += '<div class="empty-state">Belum ada transaksi di dompet ini.</div>';
+    } else {
+      html += renderTxList(list, true);
+    }
+    html += '</div>';
+
+    html += '</div>';
+    return html;
+  }
+
   function catLabel(id){ if(!id) return '-'; const c = state.categories.find(x=>x.id===id); return c ? c.name : '(kategori dihapus)'; }
 
   function renderCatDetailPage(catId){
@@ -1205,7 +1236,7 @@
         const bal = walletBalance(w.id);
         const excluded = w.includeInTotal===false;
         const col = walletColorFor(w.type);
-        html += '<div class="wallet-row">';
+        html += '<div class="wallet-row" data-open-wallet="'+w.id+'" style="cursor:pointer;">';
         html += '<div class="wallet-row-icon" style="background:'+col+'22;color:'+col+';">'+walletIcon(w.type)+'</div>';
         html += '<div class="wallet-row-mid"><div class="wallet-row-name">'+esc(w.name)+(excluded?' <span class="wallet-row-tag">di luar total</span>':'')+'</div>';
         html += '<div class="wallet-row-balance">Saldo: <span class="mono '+(bal<0?'expense':'income')+'">'+fmt(bal)+'</span></div></div>';
@@ -1639,6 +1670,9 @@
     if(expandedCatId){
       html += renderCatDetailPage(expandedCatId);
     }
+    if(expandedWalletId){
+      html += renderWalletDetailPage(expandedWalletId);
+    }
     root.innerHTML = html;
     attachAppHandlers();
     updateFabVisibility();
@@ -1923,6 +1957,13 @@
         render();
       };
     });
+    document.querySelectorAll('[data-open-wallet]').forEach(el=>{
+      el.onclick = (e)=>{
+        if(e.target.closest('[data-wallet-menu],[data-edit-wallet],[data-del-wallet],.wallet-row-menu')) return;
+        expandedWalletId = el.dataset.openWallet;
+        render();
+      };
+    });
     document.querySelectorAll('[data-go-tx-nocat]').forEach(el=>{
       el.onclick = ()=>{
         currentTab = 'transactions';
@@ -1933,6 +1974,8 @@
     });
     const catDetailClose = document.getElementById('catDetailClose');
     if(catDetailClose) catDetailClose.onclick = ()=>{ expandedCatId = null; render(); };
+    const walletDetailClose = document.getElementById('walletDetailClose');
+    if(walletDetailClose) walletDetailClose.onclick = ()=>{ expandedWalletId = null; render(); };
     document.querySelectorAll('[data-edit-cat]').forEach(b=>{
       b.onclick = ()=>{ editCatId = b.dataset.editCat; render(); };
     });
@@ -2189,6 +2232,7 @@
 
     attachSwipeBack('txAddModal', ()=>{ txFormOpen = false; render(); });
     attachSwipeBack('catDetailPage', ()=>{ expandedCatId = null; render(); });
+    attachSwipeBack('walletDetailPage', ()=>{ expandedWalletId = null; render(); });
     document.querySelectorAll('[data-edit-type]').forEach(b=>{
       b.onclick = ()=>{ editTxType = b.dataset.editType; render(); };
     });
