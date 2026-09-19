@@ -990,6 +990,9 @@
     if(c.budgetOverrides && Object.prototype.hasOwnProperty.call(c.budgetOverrides, m)){
       return Number(c.budgetOverrides[m])||0;
     }
+    return Number(c.budget)||0;
+  }
+  function suggestedCategoryBudget(c, m){
     if(c.budgetOverrides){
       const keys = Object.keys(c.budgetOverrides).filter(k=>k<m).sort();
       if(keys.length>0){
@@ -1346,7 +1349,7 @@
   function renderMonthBudgetModal(c){
     const m = getSelectedMonth();
     const hasOverride = c.budgetOverrides && Object.prototype.hasOwnProperty.call(c.budgetOverrides, m);
-    const currentVal = getCategoryBudget(c, m);
+    const currentVal = hasOverride ? c.budgetOverrides[m] : suggestedCategoryBudget(c, m);
     let html = '<div class="tx-modal-backdrop" id="monthBudgetModalBackdrop"><div class="tx-modal">';
     html += '<div class="tx-modal-top"><div class="tx-modal-title">Budget '+esc(c.name)+' — '+monthLabel(m)+'</div><button class="tx-modal-close" id="monthBudgetModalClose" title="Tutup">✕</button></div>';
     html += '<div class="tx-modal-body" style="border-top:none;padding-top:0;">';
