@@ -1574,7 +1574,7 @@
         html += '<div class="note-title">'+noteTypeBadge(n.type)+'<span>'+esc(n.title||'(tanpa judul)')+'</span></div>';
         html += '<button class="wallet-row-menu-btn" data-note-menu="'+n.id+'" style="flex:0 0 auto;">•••</button>';
         html += '</div>';
-        html += '<div class="wallet-row-menu" id="noteMenu_'+n.id+'"><button class="danger" data-del-note="'+n.id+'">🗑 Hapus Catatan</button></div>';
+        html += '<div class="wallet-row-menu" id="noteMenu_'+n.id+'"><button class="danger" data-del-note="'+n.id+'">Hapus</button></div>';
         if(snippet) html += '<div class="note-snippet">'+esc(snippet)+'</div>';
         html += '<div class="note-date">'+noteDateLabel(n.updatedAt)+'</div>';
         html += '</div>';
