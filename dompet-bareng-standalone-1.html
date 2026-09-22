@@ -224,7 +224,6 @@
   .note-item-dot{ width:6px; height:6px; border-radius:50%; background:var(--ink-soft); flex:0 0 auto; margin:0 6px; }
   .note-item-text{ flex:1; font-size:14px; word-break:break-word; }
   .note-item-text.done{ text-decoration:line-through; color:var(--ink-soft); }
-  .note-item-del{ background:var(--paper-card-alt); border:none; color:var(--red); font-size:14px; width:26px; height:26px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; cursor:pointer; }
   .note-add-item-row{ display:flex; gap:8px; margin-top:10px; }
   .note-add-item-row input{ flex:1; }
   .reimb-row{ display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid rgba(255,255,255,0.08); }
@@ -351,6 +350,10 @@
   .tx-item.compact .tx-note{ font-size:13.5px; }
   .tx-item.compact .tx-meta{ font-size:11px; }
   .tx-item.compact .tx-amount{ font-size:13.5px; }
+  .tx-del[data-del-note-item]{ background:var(--red); color:#fff; }
+  .tx-del[data-del-note-item]:hover{ background:#B85850; }
+  .tx-del[data-edit-note-item]{ background:var(--teal-dark); color:#fff; }
+  .tx-del[data-edit-note-item]:hover{ background:var(--teal); }
   .tx-item.compact .tx-del{ font-size:11px; width:22px; height:22px; }
 
   .month-group-label{
@@ -518,10 +521,11 @@
     padding:16px 0 10px; border-bottom:1px solid rgba(255,255,255,0.08);
   }
   .cat-detail-header button{
-    background:var(--red); border:none; color:#fff;
+    background:rgba(255,255,255,0.08); border:none; color:var(--ink-soft);
     width:32px; height:32px; border-radius:50%; font-size:14px; cursor:pointer;
     flex-shrink:0; display:flex; align-items:center; justify-content:center;
   }
+  .cat-detail-header button:active{ background:rgba(255,255,255,0.14); }
   .form-modal-header{
     display:flex; align-items:center; justify-content:space-between; gap:14px;
     position:sticky; top:0; background:var(--paper); z-index:5;
@@ -611,6 +615,7 @@
   let editCatId = null;
   let monthBudgetCatId = null;
   let addExistingCatOpen = false;
+  let editingReimItemId = null;
   let txFilterCategoryPreset = null;
   let walletFormOpen = false;
   let catFormOpen = false;
@@ -1400,7 +1405,7 @@
             html += '<div class="note-item-dot"></div>';
           }
           html += '<div class="note-item-text'+(it.checked&&it.checkbox?' done':'')+'">'+esc(it.text)+'</div>';
-          html += '<button class="note-item-del" data-del-note-item="'+n.id+'" data-item-id="'+it.id+'">✕</button>';
+          html += '<button class="tx-del" data-del-note-item="'+n.id+'" data-item-id="'+it.id+'" title="Hapus">✕</button>';
           html += '</div>';
         });
       }
@@ -1415,6 +1420,7 @@
       const total = items.reduce((s,it)=>s+(Number(it.amount)||0),0);
       const deposit = Number(n.deposit)||0;
       const sisa = deposit - total;
+      const editingItem = editingReimItemId ? items.find(it=>it.id===editingReimItemId) : null;
       html += '<div class="ledger-sheet no-rule" style="margin-top:14px;">';
       html += '<div class="field" style="margin-bottom:12px;"><label>Deposit Awal (opsional)</label><input id="nDeposit" type="text" inputmode="numeric" placeholder="0" value="'+(deposit>0?deposit.toLocaleString('id-ID'):'')+'"></div>';
       html += '<div class="reimb-status-row">';
@@ -1429,7 +1435,8 @@
           html += '<div class="reimb-row">';
           html += '<div class="reimb-row-info"><div class="reimb-row-desc">'+esc(it.desc)+'</div><div class="reimb-row-date">'+(it.date?formatDateShort(it.date):'')+'</div></div>';
           html += '<div class="reimb-row-amount mono">'+fmt(Number(it.amount)||0)+'</div>';
-          html += '<button class="note-item-del" data-del-note-item="'+n.id+'" data-item-id="'+it.id+'">✕</button>';
+          html += '<button class="tx-del" data-edit-note-item="'+n.id+'" data-item-id="'+it.id+'" title="Edit" style="font-size:14px;">✎</button>';
+          html += '<button class="tx-del" data-del-note-item="'+n.id+'" data-item-id="'+it.id+'" title="Hapus">✕</button>';
           html += '</div>';
         });
         html += '<div class="reimb-total-row"><span>Total'+(deposit>0?' Terpakai':'')+'</span><span class="mono">'+fmt(total)+'</span></div>';
@@ -1438,12 +1445,18 @@
           html += '<div class="reimb-total-row" style="padding-top:4px;"><span>Sisa</span><span class="mono" style="color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span></div>';
         }
       }
+      if(editingItem){
+        html += '<div style="margin-top:12px;font-size:12px;font-weight:700;color:var(--gold-dark);">✎ Mengedit item</div>';
+      }
       html += '<div class="reimb-add-form">';
-      html += '<input id="nReimDate" type="date" value="'+todayStr()+'">';
-      html += '<input id="nReimAmount" type="text" inputmode="numeric" placeholder="Nominal">';
-      html += '<input id="nReimDesc" placeholder="Keterangan pengeluaran" style="grid-column:span 2;">';
+      html += '<input id="nReimDate" type="date" value="'+(editingItem?editingItem.date:todayStr())+'">';
+      html += '<input id="nReimAmount" type="text" inputmode="numeric" placeholder="Nominal" value="'+(editingItem?Number(editingItem.amount).toLocaleString('id-ID'):'')+'">';
+      html += '<input id="nReimDesc" placeholder="Keterangan pengeluaran" style="grid-column:span 2;" value="'+(editingItem?esc(editingItem.desc):'')+'">';
       html += '</div>';
-      html += '<button class="btn ghost small" id="nAddReimBtn" data-note-id="'+n.id+'" style="margin-top:8px;width:100%;">+ Tambah Item</button>';
+      html += '<div style="display:flex;gap:8px;margin-top:8px;">';
+      if(editingItem) html += '<button class="btn ghost small" id="nCancelEditReimBtn" style="flex:0 0 auto;">Batal</button>';
+      html += '<button class="btn ghost small" id="nAddReimBtn" data-note-id="'+n.id+'" style="flex:1;">'+(editingItem?'✓ Update Item':'+ Tambah Item')+'</button>';
+      html += '</div>';
       html += '</div>';
     }
 
@@ -2405,7 +2418,7 @@
     const openNoteFormBtn = document.getElementById('openNoteFormBtn');
     if(openNoteFormBtn) openNoteFormBtn.onclick = ()=>{ noteFormOpen = true; render(); };
     document.querySelectorAll('[data-open-note]').forEach(el=>{
-      el.onclick = ()=>{ editNoteId = el.dataset.openNote; render(); };
+      el.onclick = ()=>{ editNoteId = el.dataset.openNote; editingReimItemId = null; render(); };
     });
     const noteTypePickerClose = document.getElementById('noteTypePickerClose');
     if(noteTypePickerClose) noteTypePickerClose.onclick = ()=>{ noteFormOpen = false; render(); };
@@ -2451,6 +2464,7 @@
         if(changed) await persistSave('notes', changed);
       }
       editNoteId = null;
+      editingReimItemId = null;
       render();
     }
     const nTitleEl = document.getElementById('nTitle');
@@ -2516,6 +2530,7 @@
         const note = state.notes.find(x=>x.id===noteId);
         if(!note || !note.items) return;
         note.items = note.items.filter(x=>x.id!==itemId);
+        if(editingReimItemId===itemId) editingReimItemId = null;
         note.updatedAt = new Date().toISOString();
         render();
         await persistSave('notes', note);
@@ -2530,11 +2545,25 @@
       const desc = document.getElementById('nReimDesc').value.trim();
       if(!desc || amount<=0){ alert('Isi keterangan dan nominal dulu'); return; }
       if(!note.items) note.items = [];
-      note.items.push({id:uid(), date, amount, desc});
+      if(editingReimItemId){
+        const item = note.items.find(x=>x.id===editingReimItemId);
+        if(item){ item.date = date; item.amount = amount; item.desc = desc; }
+        editingReimItemId = null;
+      } else {
+        note.items.push({id:uid(), date, amount, desc});
+      }
       note.updatedAt = new Date().toISOString();
       render();
       await persistSave('notes', note);
     };
+    const nCancelEditReimBtn = document.getElementById('nCancelEditReimBtn');
+    if(nCancelEditReimBtn) nCancelEditReimBtn.onclick = ()=>{ editingReimItemId = null; render(); };
+    document.querySelectorAll('[data-edit-note-item]').forEach(el=>{
+      el.onclick = ()=>{
+        editingReimItemId = el.dataset.itemId;
+        render();
+      };
+    });
     document.querySelectorAll('[data-set-reimb-status]').forEach(el=>{
       el.onclick = async ()=>{
         const noteId = el.dataset.setReimbStatus;
