@@ -226,13 +226,15 @@
   .note-item-text.done{ text-decoration:line-through; color:var(--ink-soft); }
   .note-add-item-row{ display:flex; gap:8px; margin-top:10px; }
   .note-add-item-row input{ flex:1; }
-  .reimb-row{ display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid rgba(255,255,255,0.08); }
+  .reimb-row{ display:flex; align-items:center; gap:8px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.08); }
   .reimb-row:last-child{ border-bottom:none; }
   .reimb-row-info{ flex:1; min-width:0; }
-  .reimb-row-desc{ font-size:14px; font-weight:600; }
-  .reimb-row-date{ font-size:11.5px; color:var(--ink-soft); margin-top:1px; }
-  .reimb-row-amount{ font-size:14px; font-weight:700; white-space:nowrap; }
-  .reimb-total-row{ display:flex; justify-content:space-between; align-items:center; padding-top:12px; margin-top:6px; border-top:2px solid rgba(255,255,255,0.18); font-weight:700; font-size:15px; }
+  .reimb-row-desc{ font-size:14.5px; font-weight:700; line-height:1.3; }
+  .reimb-row-date{ font-size:11px; color:var(--ink-soft); margin-top:2px; font-style:italic; }
+  .reimb-row-amount{ font-size:15px; font-weight:700; white-space:nowrap; }
+  .reimb-total-row{ display:flex; justify-content:space-between; align-items:center; padding-top:10px; margin-top:6px; border-top:2px solid rgba(255,255,255,0.18); font-weight:600; font-size:13.5px; color:var(--ink-soft); }
+  .reimb-total-row .mono{ color:var(--ink); font-weight:700; }
+  .reimb-total-row.reimb-grand{ font-size:19px; font-weight:800; color:var(--ink); }
   .reimb-status-row{ display:flex; gap:8px; margin-bottom:12px; }
   .reimb-status-btn{ flex:1; padding:9px 6px; border-radius:8px; border:1px solid rgba(255,255,255,0.22); background:var(--paper-card-alt); color:var(--ink-soft); font-size:12px; font-weight:700; text-align:center; cursor:pointer; }
   .reimb-status-btn.active{ background:var(--gold-dark); color:#1a1a1a; border-color:var(--gold-dark); }
@@ -240,13 +242,14 @@
   .reimb-add-form input{ width:100%; }
   .reimb-cat-chip-row{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
   .reimb-cat-chip{ font-size:11.5px; padding:5px 11px; border-radius:100px; border:1px solid rgba(255,255,255,0.22); background:var(--paper-card-alt); color:var(--ink-soft); cursor:pointer; }
-  .reimb-cat-chip.active{ background:var(--gold-dark); color:#1a1a1a; border-color:var(--gold-dark); font-weight:600; }
-  .reimb-row-cat{ font-size:10.5px; color:var(--gold-dark); margin-top:2px; font-weight:600; text-transform:uppercase; letter-spacing:0.3px; }
+  .reimb-cat-chip.active{ background:var(--gold-dark); color:#1a1a1a; border-color:var(--gold-dark); font-weight:700; }
+  .reimb-row-cat{ font-size:10px; color:var(--gold-dark); margin-top:3px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px; }
   .reimb-cat-breakdown{ margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1); }
-  .reimb-cat-breakdown-row{ display:flex; justify-content:space-between; font-size:12.5px; color:var(--ink-soft); padding:3px 0; }
-  .reimb-cat-breakdown-row .mono{ color:var(--ink); font-weight:600; }
-  .reimb-cat-group-header{ display:flex; justify-content:space-between; align-items:center; padding:10px 2px 8px; font-size:13.5px; font-weight:700; cursor:pointer; }
-  .reimb-cat-group-header .mono{ font-weight:700; }
+  .reimb-cat-breakdown-row{ display:flex; justify-content:space-between; font-size:12.5px; color:var(--ink-soft); padding:4px 0; font-style:italic; }
+  .reimb-cat-breakdown-row .mono{ color:var(--ink); font-weight:700; font-style:normal; }
+  .reimb-cat-group-header{ display:flex; justify-content:space-between; align-items:center; padding:9px 10px; margin-top:8px; border-radius:7px; background:rgba(255,255,255,0.04); font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.3px; cursor:pointer; }
+  .reimb-cat-group-header .mono{ font-weight:700; font-size:14px; text-transform:none; letter-spacing:0; }
+  .reimb-editing-row{ border:1px solid var(--gold-dark); border-radius:9px; padding:12px; margin:4px 0; background:rgba(200,164,90,0.06); }
   .cat-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; flex-wrap:wrap; gap:4px; }
   .cat-name{ font-weight:600; font-size:15px; display:flex; align-items:center; gap:9px; }
   .cat-icon-badge{
@@ -547,7 +550,7 @@
     flex-shrink:0; display:flex; align-items:center; justify-content:center;
   }
   .cat-detail-title{ font-size:16px; font-weight:700; }
-  .note-title-input{ font-size:17px; font-weight:700; background:none; border:none; padding:0; width:100%; color:var(--ink); }
+  .note-title-input{ font-size:19px; font-weight:800; background:none; border:none; padding:0; width:100%; color:var(--ink); }
   .note-title-input:focus{ outline:none; }
   .cat-detail-sub{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
 
@@ -1454,7 +1457,7 @@
       function renderOneReimRow(it){
         if(it.id===editingReimItemId){
           const editCat = draftReimEditCategory || it.category || 'Lainnya';
-          let h = '<div class="reimb-row" style="flex-wrap:wrap;align-items:stretch;padding-bottom:14px;">';
+          let h = '<div class="reimb-row reimb-editing-row" style="flex-wrap:wrap;align-items:stretch;">';
           h += '<div class="reimb-add-form" style="grid-column:1/-1;width:100%;">';
           h += '<input id="nReimEditDate" type="date" value="'+it.date+'">';
           h += '<input id="nReimEditAmount" type="text" inputmode="numeric" placeholder="Nominal" value="'+Number(it.amount).toLocaleString('id-ID')+'">';
@@ -1517,10 +1520,10 @@
         sortedItems.forEach(it=>{ html += renderOneReimRow(it); });
       }
       if(items.length>0){
-        html += '<div class="reimb-total-row"><span>Total'+(deposit>0?' Terpakai':'')+'</span><span class="mono">'+fmt(total)+'</span></div>';
+        html += '<div class="reimb-total-row'+(deposit>0?'':' reimb-grand')+'"><span>Total'+(deposit>0?' Terpakai':'')+'</span><span class="mono">'+fmt(total)+'</span></div>';
         if(deposit>0){
-          html += '<div class="reimb-total-row" style="border-top:none;padding-top:4px;font-size:13px;"><span>Deposit</span><span class="mono">'+fmt(deposit)+'</span></div>';
-          html += '<div class="reimb-total-row" style="padding-top:4px;"><span>Sisa</span><span class="mono" style="color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span></div>';
+          html += '<div class="reimb-total-row" style="border-top:none;padding-top:2px;font-size:12px;"><span>Deposit</span><span class="mono">'+fmt(deposit)+'</span></div>';
+          html += '<div class="reimb-total-row reimb-grand" style="border-top:none;margin-top:0;"><span>Sisa</span><span class="mono" style="color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span></div>';
         }
         const byCat = {};
         items.forEach(it=>{
