@@ -1350,7 +1350,12 @@
     if(n.type==='reimbursement'){
       const items = n.items||[];
       const total = items.reduce((s,it)=>s+(Number(it.amount)||0),0);
+      const deposit = Number(n.deposit)||0;
       const statusLabel = n.status==='cair' ? 'Sudah Cair' : (n.status==='diajukan' ? 'Sudah Diajukan' : 'Menunggu');
+      if(deposit>0){
+        const sisa = deposit - total;
+        return 'Sisa Rp '+sisa.toLocaleString('id-ID')+' dari Rp '+deposit.toLocaleString('id-ID')+' · '+items.length+' item · '+statusLabel;
+      }
       return 'Rp '+total.toLocaleString('id-ID')+' · '+items.length+' item · '+statusLabel;
     }
     const items = n.items||[];
@@ -1408,7 +1413,10 @@
     } else if(type==='reimbursement'){
       const items = n.items||[];
       const total = items.reduce((s,it)=>s+(Number(it.amount)||0),0);
+      const deposit = Number(n.deposit)||0;
+      const sisa = deposit - total;
       html += '<div class="ledger-sheet no-rule" style="margin-top:14px;">';
+      html += '<div class="field" style="margin-bottom:12px;"><label>Deposit Awal (opsional)</label><input id="nDeposit" type="text" inputmode="numeric" placeholder="0" value="'+(deposit>0?deposit.toLocaleString('id-ID'):'')+'"></div>';
       html += '<div class="reimb-status-row">';
       html += '<div class="reimb-status-btn'+(!n.status||n.status==='menunggu'?' active':'')+'" data-set-reimb-status="'+n.id+'" data-status="menunggu">Menunggu</div>';
       html += '<div class="reimb-status-btn'+(n.status==='diajukan'?' active':'')+'" data-set-reimb-status="'+n.id+'" data-status="diajukan">Sudah Diajukan</div>';
@@ -1424,7 +1432,11 @@
           html += '<button class="note-item-del" data-del-note-item="'+n.id+'" data-item-id="'+it.id+'">✕</button>';
           html += '</div>';
         });
-        html += '<div class="reimb-total-row"><span>Total</span><span class="mono">'+fmt(total)+'</span></div>';
+        html += '<div class="reimb-total-row"><span>Total'+(deposit>0?' Terpakai':'')+'</span><span class="mono">'+fmt(total)+'</span></div>';
+        if(deposit>0){
+          html += '<div class="reimb-total-row" style="border-top:none;padding-top:4px;font-size:13px;"><span>Deposit</span><span class="mono">'+fmt(deposit)+'</span></div>';
+          html += '<div class="reimb-total-row" style="padding-top:4px;"><span>Sisa</span><span class="mono" style="color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span></div>';
+        }
       }
       html += '<div class="reimb-add-form">';
       html += '<input id="nReimDate" type="date" value="'+todayStr()+'">';
@@ -2034,7 +2046,7 @@
     document.querySelectorAll('[data-goto-current]').forEach(b=>{
       b.onclick = ()=>{ selectedMonth = null; render(); };
     });
-    ['wStart','cBudget','etAmount','ewStart','ecBudget','mbAmount','nReimAmount'].forEach(attachThousandFormat);
+    ['wStart','cBudget','etAmount','ewStart','ecBudget','mbAmount','nReimAmount','nDeposit'].forEach(attachThousandFormat);
     state.wallets.forEach(w=>attachThousandFormat('ewStart_'+w.id));
     state.categories.forEach(c=>attachThousandFormat('ecBudget_'+c.id));
     document.querySelectorAll('.tab-btn').forEach(b=>{
@@ -2421,9 +2433,14 @@
       if(!note) return null;
       const titleEl = document.getElementById('nTitle');
       const bodyEl = document.getElementById('nBody');
+      const depositEl = document.getElementById('nDeposit');
       let changed = false;
       if(titleEl && titleEl.value.trim() !== (note.title||'')){ note.title = titleEl.value.trim(); changed = true; }
       if(bodyEl && bodyEl.value !== (note.body||'')){ note.body = bodyEl.value; changed = true; }
+      if(depositEl){
+        const depositVal = Number((depositEl.value||'0').replace(/\D/g,''))||0;
+        if(depositVal !== (Number(note.deposit)||0)){ note.deposit = depositVal; changed = true; }
+      }
       if(changed) note.updatedAt = new Date().toISOString();
       return changed ? note : null;
     }
@@ -2444,6 +2461,11 @@
     if(nBodyEl) nBodyEl.onblur = async ()=>{
       const changed = commitNoteTextFields(editNoteId);
       if(changed) await persistSave('notes', changed);
+    };
+    const nDepositEl = document.getElementById('nDeposit');
+    if(nDepositEl) nDepositEl.onblur = async ()=>{
+      const changed = commitNoteTextFields(editNoteId);
+      if(changed){ await persistSave('notes', changed); render(); }
     };
     const noteDetailClose = document.getElementById('noteDetailClose');
     if(noteDetailClose) noteDetailClose.onclick = closeNoteDetail;
