@@ -224,7 +224,7 @@
   .note-item-dot{ width:6px; height:6px; border-radius:50%; background:var(--ink-soft); flex:0 0 auto; margin:0 6px; }
   .note-item-text{ flex:1; font-size:14px; word-break:break-word; }
   .note-item-text.done{ text-decoration:line-through; color:var(--ink-soft); }
-  .note-item-del{ background:none; border:none; color:var(--red); font-size:16px; cursor:pointer; padding:2px 6px; flex:0 0 auto; }
+  .note-item-del{ background:var(--paper-card-alt); border:none; color:var(--red); font-size:14px; width:26px; height:26px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; cursor:pointer; }
   .note-add-item-row{ display:flex; gap:8px; margin-top:10px; }
   .note-add-item-row input{ flex:1; }
   .reimb-row{ display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid rgba(255,255,255,0.08); }
@@ -1379,7 +1379,7 @@
     normalizeNote(n);
     const type = n.type;
     let html = '<div class="cat-detail-page" id="noteDetailPage">';
-    html += '<div class="cat-detail-header"><div style="flex:1;"><input id="nTitle" class="note-title-input" placeholder="Judul catatan" value="'+esc(n.title||'')+'">'+(type==='reimbursement'?'<div class="cat-detail-sub">'+noteTypeBadge(type)+'</div>':'')+'</div><button class="note-item-del" id="deleteNoteBtn" data-note-id="'+n.id+'" title="Hapus" style="font-size:19px;">🗑</button><button id="noteDetailClose" title="Tutup">✕</button></div>';
+    html += '<div class="cat-detail-header"><div style="flex:1;"><input id="nTitle" class="note-title-input" placeholder="Judul catatan" value="'+esc(n.title||'')+'">'+(type==='reimbursement'?'<div class="cat-detail-sub">'+noteTypeBadge(type)+'</div>':'')+'</div><button id="noteDetailClose" title="Tutup">✕</button></div>';
 
     if(type==='note'){
       html += '<div class="ledger-sheet no-rule" style="margin-top:14px;">';
@@ -1447,6 +1447,7 @@
       html += '</div>';
     }
 
+    html += '<div class="ledger-sheet no-rule"><button type="button" class="btn danger small" id="deleteNoteBtn" data-note-id="'+n.id+'" style="width:100%;">🗑 Hapus Catatan</button></div>';
     html += '</div>';
     return html;
   }
