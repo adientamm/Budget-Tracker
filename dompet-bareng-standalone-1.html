@@ -1400,7 +1400,7 @@
     normalizeNote(n);
     const type = n.type;
     let html = '<div class="cat-detail-page" id="noteDetailPage">';
-    html += '<div class="cat-detail-header" style="position:relative;"><div style="flex:1;"><input id="nTitle" class="note-title-input" placeholder="Judul catatan" value="'+esc(n.title||'')+'">'+(type==='reimbursement'?'<div class="cat-detail-sub">'+noteTypeBadge(type)+'</div>':'')+'</div><button class="wallet-row-menu-btn" data-note-menu="'+n.id+'" style="margin-right:2px;">•••</button><div class="wallet-row-menu" id="noteMenu_'+n.id+'" style="top:44px;"><button class="danger" id="deleteNoteBtn" data-note-id="'+n.id+'">🗑 Hapus Catatan</button></div><button id="noteDetailClose" title="Tutup">✕</button></div>';
+    html += '<div class="cat-detail-header"><div style="flex:1;"><input id="nTitle" class="note-title-input" placeholder="Judul catatan" value="'+esc(n.title||'')+'">'+(type==='reimbursement'?'<div class="cat-detail-sub">'+noteTypeBadge(type)+'</div>':'')+'</div><button id="noteDetailClose" title="Tutup">✕</button></div>';
 
     if(type==='note'){
       html += '<div class="ledger-sheet no-rule" style="margin-top:14px;">';
@@ -1569,8 +1569,12 @@
       state.notes.slice().sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||'')).forEach(n=>{
         normalizeNote(n);
         const snippet = noteSnippet(n);
-        html += '<div class="note-card" data-open-note="'+n.id+'">';
+        html += '<div class="note-card" data-open-note="'+n.id+'" style="position:relative;">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">';
         html += '<div class="note-title">'+noteTypeBadge(n.type)+'<span>'+esc(n.title||'(tanpa judul)')+'</span></div>';
+        html += '<button class="wallet-row-menu-btn" data-note-menu="'+n.id+'" style="flex:0 0 auto;">•••</button>';
+        html += '</div>';
+        html += '<div class="wallet-row-menu" id="noteMenu_'+n.id+'"><button class="danger" data-del-note="'+n.id+'">🗑 Hapus Catatan</button></div>';
         if(snippet) html += '<div class="note-snippet">'+esc(snippet)+'</div>';
         html += '<div class="note-date">'+noteDateLabel(n.updatedAt)+'</div>';
         html += '</div>';
@@ -2524,7 +2528,10 @@
     const openNoteFormBtn = document.getElementById('openNoteFormBtn');
     if(openNoteFormBtn) openNoteFormBtn.onclick = ()=>{ noteFormOpen = true; render(); };
     document.querySelectorAll('[data-open-note]').forEach(el=>{
-      el.onclick = ()=>{ editNoteId = el.dataset.openNote; editingReimItemId = null; draftReimCategory = null; draftReimEditCategory = null; render(); };
+      el.onclick = (e)=>{
+        if(e.target.closest('[data-note-menu],[data-del-note],.wallet-row-menu')) return;
+        editNoteId = el.dataset.openNote; editingReimItemId = null; draftReimCategory = null; draftReimEditCategory = null; render();
+      };
     });
     const noteTypePickerClose = document.getElementById('noteTypePickerClose');
     if(noteTypePickerClose) noteTypePickerClose.onclick = ()=>{ noteFormOpen = false; render(); };
@@ -2603,15 +2610,17 @@
     const noteDetailClose = document.getElementById('noteDetailClose');
     if(noteDetailClose) noteDetailClose.onclick = closeNoteDetail;
     attachSwipeBack('noteDetailPage', ()=>{ closeNoteDetail(); });
-    const deleteNoteBtn = document.getElementById('deleteNoteBtn');
-    if(deleteNoteBtn) deleteNoteBtn.onclick = async ()=>{
-      const id = deleteNoteBtn.dataset.noteId;
-      if(!confirm('Hapus catatan ini?')) return;
-      state.notes = state.notes.filter(n=>n.id!==id);
-      editNoteId = null;
-      render();
-      await persistDelete('notes', id);
-    };
+    document.querySelectorAll('[data-del-note]').forEach(el=>{
+      el.onclick = async (e)=>{
+        e.stopPropagation();
+        const id = el.dataset.delNote;
+        if(!confirm('Hapus catatan ini?')) return;
+        state.notes = state.notes.filter(n=>n.id!==id);
+        if(editNoteId===id) editNoteId = null;
+        render();
+        await persistDelete('notes', id);
+      };
+    });
     function addNoteItem(noteId, checkbox){
       const note = state.notes.find(x=>x.id===noteId);
       const input = document.getElementById('nNewItem');
