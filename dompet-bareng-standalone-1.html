@@ -245,6 +245,8 @@
   .reimb-cat-breakdown{ margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1); }
   .reimb-cat-breakdown-row{ display:flex; justify-content:space-between; font-size:12.5px; color:var(--ink-soft); padding:3px 0; }
   .reimb-cat-breakdown-row .mono{ color:var(--ink); font-weight:600; }
+  .reimb-cat-group-header{ display:flex; justify-content:space-between; align-items:center; padding:10px 2px 8px; font-size:13.5px; font-weight:700; cursor:pointer; }
+  .reimb-cat-group-header .mono{ font-weight:700; }
   .cat-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; flex-wrap:wrap; gap:4px; }
   .cat-name{ font-weight:600; font-size:15px; display:flex; align-items:center; gap:9px; }
   .cat-icon-badge{
@@ -626,6 +628,7 @@
   let draftReimCategory = null;
   let draftReimEditCategory = null;
   let reimSortMode = 'date-asc';
+  let reimCollapsedCats = new Set();
   let txFilterCategoryPreset = null;
   let walletFormOpen = false;
   let catFormOpen = false;
@@ -1441,15 +1444,69 @@
       if(items.length>0){
         html += '<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">';
         html += '<select id="reimSortSelect" style="font-size:12px;padding:6px 10px;width:auto;">';
-        const sortOptions = [['date-asc','Tanggal: Lama ke Baru'],['date-desc','Tanggal: Baru ke Lama'],['amount-desc','Nominal: Terbesar'],['amount-asc','Nominal: Terkecil']];
+        const sortOptions = [['date-asc','Tanggal: Lama ke Baru'],['date-desc','Tanggal: Baru ke Lama'],['amount-desc','Nominal: Terbesar'],['amount-asc','Nominal: Terkecil'],['category','Kelompok per Kategori']];
         sortOptions.forEach(([val,label])=>{
           html += '<option value="'+val+'"'+(reimSortMode===val?' selected':'')+'>'+label+'</option>';
         });
         html += '</select>';
         html += '</div>';
       }
+      function renderOneReimRow(it){
+        if(it.id===editingReimItemId){
+          const editCat = draftReimEditCategory || it.category || 'Lainnya';
+          let h = '<div class="reimb-row" style="flex-wrap:wrap;align-items:stretch;padding-bottom:14px;">';
+          h += '<div class="reimb-add-form" style="grid-column:1/-1;width:100%;">';
+          h += '<input id="nReimEditDate" type="date" value="'+it.date+'">';
+          h += '<input id="nReimEditAmount" type="text" inputmode="numeric" placeholder="Nominal" value="'+Number(it.amount).toLocaleString('id-ID')+'">';
+          h += '<input id="nReimEditDesc" placeholder="Keterangan pengeluaran" style="grid-column:span 2;" value="'+esc(it.desc)+'">';
+          h += '</div>';
+          h += '<div class="reimb-cat-chip-row" style="width:100%;">';
+          REIMB_CATS.forEach(cat=>{
+            h += '<div class="reimb-cat-chip'+(editCat===cat?' active':'')+'" data-pick-reim-cat="'+esc(cat)+'" data-reim-cat-target="edit">'+esc(cat)+'</div>';
+          });
+          h += '</div>';
+          h += '<input id="nReimEditCatCustom" placeholder="atau ketik kategori lain..." style="margin-top:8px;width:100%;" value="'+(REIMB_CATS.includes(editCat)?'':esc(editCat))+'">';
+          h += '<div style="display:flex;gap:8px;margin-top:10px;width:100%;">';
+          h += '<button class="btn ghost small" id="nCancelEditReimBtn" style="flex:0 0 auto;">Batal</button>';
+          h += '<button class="btn ghost small" id="nSaveEditReimBtn" data-note-id="'+n.id+'" data-item-id="'+it.id+'" style="flex:1;">✓ Simpan</button>';
+          h += '</div>';
+          h += '</div>';
+          return h;
+        }
+        let h = '<div class="reimb-row">';
+        h += '<div class="reimb-row-info"><div class="reimb-row-desc">'+esc(it.desc)+'</div><div class="reimb-row-date">'+(it.date?formatDateShort(it.date):'')+'</div>'+(reimSortMode==='category'?'':'<div class="reimb-row-cat">'+esc(it.category||'Lainnya')+'</div>')+'</div>';
+        h += '<div class="reimb-row-amount mono">'+fmt(Number(it.amount)||0)+'</div>';
+        h += '<button class="tx-del" data-edit-note-item="'+n.id+'" data-item-id="'+it.id+'" title="Edit" style="font-size:14px;">✎</button>';
+        h += '<button class="tx-del" data-del-note-item="'+n.id+'" data-item-id="'+it.id+'" title="Hapus">✕</button>';
+        h += '</div>';
+        return h;
+      }
       if(items.length===0){
         html += '<div class="empty-state" style="padding:10px 0;">Belum ada item pengeluaran.</div>';
+      } else if(reimSortMode==='category'){
+        const byCatItems = {};
+        items.forEach(it=>{
+          const cat = it.category || 'Lainnya';
+          if(!byCatItems[cat]) byCatItems[cat] = [];
+          byCatItems[cat].push(it);
+        });
+        const catKeysGrouped = Object.keys(byCatItems).sort((a,b)=>{
+          const totalA = byCatItems[a].reduce((s,it)=>s+(Number(it.amount)||0),0);
+          const totalB = byCatItems[b].reduce((s,it)=>s+(Number(it.amount)||0),0);
+          return totalB - totalA;
+        });
+        catKeysGrouped.forEach(cat=>{
+          const catItems = byCatItems[cat].slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+          const catTotal = catItems.reduce((s,it)=>s+(Number(it.amount)||0),0);
+          const collapsed = reimCollapsedCats.has(cat);
+          html += '<div class="reimb-cat-group-header" data-toggle-reim-cat-group="'+esc(cat)+'">';
+          html += '<span>'+(collapsed?'▸':'▾')+' '+esc(cat)+' <span style="color:var(--ink-soft);font-weight:400;">('+catItems.length+')</span></span>';
+          html += '<span class="mono">'+fmt(catTotal)+'</span>';
+          html += '</div>';
+          if(!collapsed){
+            catItems.forEach(it=>{ html += renderOneReimRow(it); });
+          }
+        });
       } else {
         const sortedItems = items.slice().sort((a,b)=>{
           if(reimSortMode==='date-desc') return (b.date||'').localeCompare(a.date||'');
@@ -1457,35 +1514,9 @@
           if(reimSortMode==='amount-asc') return (Number(a.amount)||0)-(Number(b.amount)||0);
           return (a.date||'').localeCompare(b.date||'');
         });
-        sortedItems.forEach(it=>{
-          if(it.id===editingReimItemId){
-            const editCat = draftReimEditCategory || it.category || 'Lainnya';
-            html += '<div class="reimb-row" style="flex-wrap:wrap;align-items:stretch;padding-bottom:14px;">';
-            html += '<div class="reimb-add-form" style="grid-column:1/-1;width:100%;">';
-            html += '<input id="nReimEditDate" type="date" value="'+it.date+'">';
-            html += '<input id="nReimEditAmount" type="text" inputmode="numeric" placeholder="Nominal" value="'+Number(it.amount).toLocaleString('id-ID')+'">';
-            html += '<input id="nReimEditDesc" placeholder="Keterangan pengeluaran" style="grid-column:span 2;" value="'+esc(it.desc)+'">';
-            html += '</div>';
-            html += '<div class="reimb-cat-chip-row" style="width:100%;">';
-            REIMB_CATS.forEach(cat=>{
-              html += '<div class="reimb-cat-chip'+(editCat===cat?' active':'')+'" data-pick-reim-cat="'+esc(cat)+'" data-reim-cat-target="edit">'+esc(cat)+'</div>';
-            });
-            html += '</div>';
-            html += '<input id="nReimEditCatCustom" placeholder="atau ketik kategori lain..." style="margin-top:8px;width:100%;" value="'+(REIMB_CATS.includes(editCat)?'':esc(editCat))+'">';
-            html += '<div style="display:flex;gap:8px;margin-top:10px;width:100%;">';
-            html += '<button class="btn ghost small" id="nCancelEditReimBtn" style="flex:0 0 auto;">Batal</button>';
-            html += '<button class="btn ghost small" id="nSaveEditReimBtn" data-note-id="'+n.id+'" data-item-id="'+it.id+'" style="flex:1;">✓ Simpan</button>';
-            html += '</div>';
-            html += '</div>';
-          } else {
-            html += '<div class="reimb-row">';
-            html += '<div class="reimb-row-info"><div class="reimb-row-desc">'+esc(it.desc)+'</div><div class="reimb-row-date">'+(it.date?formatDateShort(it.date):'')+'</div><div class="reimb-row-cat">'+esc(it.category||'Lainnya')+'</div></div>';
-            html += '<div class="reimb-row-amount mono">'+fmt(Number(it.amount)||0)+'</div>';
-            html += '<button class="tx-del" data-edit-note-item="'+n.id+'" data-item-id="'+it.id+'" title="Edit" style="font-size:14px;">✎</button>';
-            html += '<button class="tx-del" data-del-note-item="'+n.id+'" data-item-id="'+it.id+'" title="Hapus">✕</button>';
-            html += '</div>';
-          }
-        });
+        sortedItems.forEach(it=>{ html += renderOneReimRow(it); });
+      }
+      if(items.length>0){
         html += '<div class="reimb-total-row"><span>Total'+(deposit>0?' Terpakai':'')+'</span><span class="mono">'+fmt(total)+'</span></div>';
         if(deposit>0){
           html += '<div class="reimb-total-row" style="border-top:none;padding-top:4px;font-size:13px;"><span>Deposit</span><span class="mono">'+fmt(deposit)+'</span></div>';
@@ -1497,7 +1528,7 @@
           byCat[cat] = (byCat[cat]||0) + (Number(it.amount)||0);
         });
         const catKeys = Object.keys(byCat).sort((a,b)=>byCat[b]-byCat[a]);
-        if(catKeys.length>1){
+        if(catKeys.length>1 && reimSortMode!=='category'){
           html += '<div class="reimb-cat-breakdown">';
           catKeys.forEach(cat=>{
             html += '<div class="reimb-cat-breakdown-row"><span>'+esc(cat)+'</span><span class="mono">'+fmt(byCat[cat])+'</span></div>';
@@ -2549,6 +2580,14 @@
     };
     const reimSortSelect = document.getElementById('reimSortSelect');
     if(reimSortSelect) reimSortSelect.onchange = ()=>{ reimSortMode = reimSortSelect.value; render(); };
+    document.querySelectorAll('[data-toggle-reim-cat-group]').forEach(el=>{
+      el.onclick = ()=>{
+        const cat = el.dataset.toggleReimCatGroup;
+        if(reimCollapsedCats.has(cat)) reimCollapsedCats.delete(cat);
+        else reimCollapsedCats.add(cat);
+        render();
+      };
+    });
     const noteDetailClose = document.getElementById('noteDetailClose');
     if(noteDetailClose) noteDetailClose.onclick = closeNoteDetail;
     attachSwipeBack('noteDetailPage', ()=>{ closeNoteDetail(); });
