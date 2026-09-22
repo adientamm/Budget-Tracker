@@ -1400,7 +1400,7 @@
     normalizeNote(n);
     const type = n.type;
     let html = '<div class="cat-detail-page" id="noteDetailPage">';
-    html += '<div class="cat-detail-header"><div style="flex:1;"><input id="nTitle" class="note-title-input" placeholder="Judul catatan" value="'+esc(n.title||'')+'">'+(type==='reimbursement'?'<div class="cat-detail-sub">'+noteTypeBadge(type)+'</div>':'')+'</div><button id="noteDetailClose" title="Tutup">✕</button></div>';
+    html += '<div class="cat-detail-header" style="position:relative;"><div style="flex:1;"><input id="nTitle" class="note-title-input" placeholder="Judul catatan" value="'+esc(n.title||'')+'">'+(type==='reimbursement'?'<div class="cat-detail-sub">'+noteTypeBadge(type)+'</div>':'')+'</div><button class="wallet-row-menu-btn" data-note-menu="'+n.id+'" style="margin-right:2px;">•••</button><div class="wallet-row-menu" id="noteMenu_'+n.id+'" style="top:44px;"><button class="danger" id="deleteNoteBtn" data-note-id="'+n.id+'">🗑 Hapus Catatan</button></div><button id="noteDetailClose" title="Tutup">✕</button></div>';
 
     if(type==='note'){
       html += '<div class="ledger-sheet no-rule" style="margin-top:14px;">';
@@ -1557,7 +1557,6 @@
       html += '</div>';
     }
 
-    html += '<div class="ledger-sheet no-rule"><button type="button" class="btn danger small" id="deleteNoteBtn" data-note-id="'+n.id+'" style="width:100%;">🗑 Hapus Catatan</button></div>';
     html += '</div>';
     return html;
   }
@@ -2246,6 +2245,16 @@
         e.stopPropagation();
         const id = btn.dataset.walletMenu;
         const menu = document.getElementById('walletMenu_'+id);
+        const isOpen = menu.classList.contains('show');
+        document.querySelectorAll('.wallet-row-menu.show').forEach(m=>m.classList.remove('show'));
+        if(!isOpen) menu.classList.add('show');
+      };
+    });
+    document.querySelectorAll('[data-note-menu]').forEach(btn=>{
+      btn.onclick = (e)=>{
+        e.stopPropagation();
+        const id = btn.dataset.noteMenu;
+        const menu = document.getElementById('noteMenu_'+id);
         const isOpen = menu.classList.contains('show');
         document.querySelectorAll('.wallet-row-menu.show').forEach(m=>m.classList.remove('show'));
         if(!isOpen) menu.classList.add('show');
