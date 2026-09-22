@@ -624,6 +624,7 @@
   let addExistingCatOpen = false;
   let editingReimItemId = null;
   let draftReimCategory = null;
+  let draftReimEditCategory = null;
   let txFilterCategoryPreset = null;
   let walletFormOpen = false;
   let catFormOpen = false;
@@ -1428,9 +1429,7 @@
       const total = items.reduce((s,it)=>s+(Number(it.amount)||0),0);
       const deposit = Number(n.deposit)||0;
       const sisa = deposit - total;
-      const editingItem = editingReimItemId ? items.find(it=>it.id===editingReimItemId) : null;
       const REIMB_CATS = ['Tindakan Dokter','Transport','Lainnya'];
-      const draftCat = draftReimCategory || (editingItem ? (editingItem.category||'Lainnya') : 'Lainnya');
       html += '<div class="ledger-sheet no-rule" style="margin-top:14px;">';
       html += '<div class="field" style="margin-bottom:12px;"><label>Deposit Awal (opsional)</label><input id="nDeposit" type="text" inputmode="numeric" placeholder="0" value="'+(deposit>0?deposit.toLocaleString('id-ID'):'')+'"></div>';
       html += '<div class="reimb-status-row">';
@@ -1442,12 +1441,33 @@
         html += '<div class="empty-state" style="padding:10px 0;">Belum ada item pengeluaran.</div>';
       } else {
         items.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(it=>{
-          html += '<div class="reimb-row">';
-          html += '<div class="reimb-row-info"><div class="reimb-row-desc">'+esc(it.desc)+'</div><div class="reimb-row-date">'+(it.date?formatDateShort(it.date):'')+'</div><div class="reimb-row-cat">'+esc(it.category||'Lainnya')+'</div></div>';
-          html += '<div class="reimb-row-amount mono">'+fmt(Number(it.amount)||0)+'</div>';
-          html += '<button class="tx-del" data-edit-note-item="'+n.id+'" data-item-id="'+it.id+'" title="Edit" style="font-size:14px;">✎</button>';
-          html += '<button class="tx-del" data-del-note-item="'+n.id+'" data-item-id="'+it.id+'" title="Hapus">✕</button>';
-          html += '</div>';
+          if(it.id===editingReimItemId){
+            const editCat = draftReimEditCategory || it.category || 'Lainnya';
+            html += '<div class="reimb-row" style="flex-wrap:wrap;align-items:stretch;padding-bottom:14px;">';
+            html += '<div class="reimb-add-form" style="grid-column:1/-1;width:100%;">';
+            html += '<input id="nReimEditDate" type="date" value="'+it.date+'">';
+            html += '<input id="nReimEditAmount" type="text" inputmode="numeric" placeholder="Nominal" value="'+Number(it.amount).toLocaleString('id-ID')+'">';
+            html += '<input id="nReimEditDesc" placeholder="Keterangan pengeluaran" style="grid-column:span 2;" value="'+esc(it.desc)+'">';
+            html += '</div>';
+            html += '<div class="reimb-cat-chip-row" style="width:100%;">';
+            REIMB_CATS.forEach(cat=>{
+              html += '<div class="reimb-cat-chip'+(editCat===cat?' active':'')+'" data-pick-reim-cat="'+esc(cat)+'" data-reim-cat-target="edit">'+esc(cat)+'</div>';
+            });
+            html += '</div>';
+            html += '<input id="nReimEditCatCustom" placeholder="atau ketik kategori lain..." style="margin-top:8px;width:100%;" value="'+(REIMB_CATS.includes(editCat)?'':esc(editCat))+'">';
+            html += '<div style="display:flex;gap:8px;margin-top:10px;width:100%;">';
+            html += '<button class="btn ghost small" id="nCancelEditReimBtn" style="flex:0 0 auto;">Batal</button>';
+            html += '<button class="btn ghost small" id="nSaveEditReimBtn" data-note-id="'+n.id+'" data-item-id="'+it.id+'" style="flex:1;">✓ Simpan</button>';
+            html += '</div>';
+            html += '</div>';
+          } else {
+            html += '<div class="reimb-row">';
+            html += '<div class="reimb-row-info"><div class="reimb-row-desc">'+esc(it.desc)+'</div><div class="reimb-row-date">'+(it.date?formatDateShort(it.date):'')+'</div><div class="reimb-row-cat">'+esc(it.category||'Lainnya')+'</div></div>';
+            html += '<div class="reimb-row-amount mono">'+fmt(Number(it.amount)||0)+'</div>';
+            html += '<button class="tx-del" data-edit-note-item="'+n.id+'" data-item-id="'+it.id+'" title="Edit" style="font-size:14px;">✎</button>';
+            html += '<button class="tx-del" data-del-note-item="'+n.id+'" data-item-id="'+it.id+'" title="Hapus">✕</button>';
+            html += '</div>';
+          }
         });
         html += '<div class="reimb-total-row"><span>Total'+(deposit>0?' Terpakai':'')+'</span><span class="mono">'+fmt(total)+'</span></div>';
         if(deposit>0){
@@ -1468,23 +1488,20 @@
           html += '</div>';
         }
       }
-      if(editingItem){
-        html += '<div style="margin-top:12px;font-size:12px;font-weight:700;color:var(--gold-dark);">✎ Mengedit item</div>';
-      }
+      const draftCat = draftReimCategory || 'Lainnya';
+      html += '<div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.1);">';
       html += '<div class="reimb-add-form">';
-      html += '<input id="nReimDate" type="date" value="'+(editingItem?editingItem.date:todayStr())+'">';
-      html += '<input id="nReimAmount" type="text" inputmode="numeric" placeholder="Nominal" value="'+(editingItem?Number(editingItem.amount).toLocaleString('id-ID'):'')+'">';
-      html += '<input id="nReimDesc" placeholder="Keterangan pengeluaran" style="grid-column:span 2;" value="'+(editingItem?esc(editingItem.desc):'')+'">';
+      html += '<input id="nReimDate" type="date" value="'+todayStr()+'">';
+      html += '<input id="nReimAmount" type="text" inputmode="numeric" placeholder="Nominal">';
+      html += '<input id="nReimDesc" placeholder="Keterangan pengeluaran" style="grid-column:span 2;">';
       html += '</div>';
       html += '<div class="reimb-cat-chip-row">';
       REIMB_CATS.forEach(cat=>{
-        html += '<div class="reimb-cat-chip'+(draftCat===cat?' active':'')+'" data-pick-reim-cat="'+esc(cat)+'">'+esc(cat)+'</div>';
+        html += '<div class="reimb-cat-chip'+(draftCat===cat?' active':'')+'" data-pick-reim-cat="'+esc(cat)+'" data-reim-cat-target="add">'+esc(cat)+'</div>';
       });
       html += '</div>';
       html += '<input id="nReimCatCustom" placeholder="atau ketik kategori lain..." style="margin-top:8px;" value="'+(REIMB_CATS.includes(draftCat)?'':esc(draftCat))+'">';
-      html += '<div style="display:flex;gap:8px;margin-top:8px;">';
-      if(editingItem) html += '<button class="btn ghost small" id="nCancelEditReimBtn" style="flex:0 0 auto;">Batal</button>';
-      html += '<button class="btn ghost small" id="nAddReimBtn" data-note-id="'+n.id+'" style="flex:1;">'+(editingItem?'✓ Update Item':'+ Tambah Item')+'</button>';
+      html += '<button class="btn ghost small" id="nAddReimBtn" data-note-id="'+n.id+'" style="margin-top:8px;width:100%;">+ Tambah Item</button>';
       html += '</div>';
       html += '</div>';
     }
@@ -2447,7 +2464,7 @@
     const openNoteFormBtn = document.getElementById('openNoteFormBtn');
     if(openNoteFormBtn) openNoteFormBtn.onclick = ()=>{ noteFormOpen = true; render(); };
     document.querySelectorAll('[data-open-note]').forEach(el=>{
-      el.onclick = ()=>{ editNoteId = el.dataset.openNote; editingReimItemId = null; draftReimCategory = null; render(); };
+      el.onclick = ()=>{ editNoteId = el.dataset.openNote; editingReimItemId = null; draftReimCategory = null; draftReimEditCategory = null; render(); };
     });
     const noteTypePickerClose = document.getElementById('noteTypePickerClose');
     if(noteTypePickerClose) noteTypePickerClose.onclick = ()=>{ noteFormOpen = false; render(); };
@@ -2495,6 +2512,7 @@
       editNoteId = null;
       editingReimItemId = null;
       draftReimCategory = null;
+      draftReimEditCategory = null;
       render();
     }
     const nTitleEl = document.getElementById('nTitle');
@@ -2560,7 +2578,7 @@
         const note = state.notes.find(x=>x.id===noteId);
         if(!note || !note.items) return;
         note.items = note.items.filter(x=>x.id!==itemId);
-        if(editingReimItemId===itemId) editingReimItemId = null;
+        if(editingReimItemId===itemId){ editingReimItemId = null; draftReimEditCategory = null; }
         note.updatedAt = new Date().toISOString();
         render();
         await persistSave('notes', note);
@@ -2574,46 +2592,58 @@
       const amount = parseAmountInput('nReimAmount');
       const desc = document.getElementById('nReimDesc').value.trim();
       const customCat = document.getElementById('nReimCatCustom').value.trim();
-      let category;
-      if(customCat) category = customCat;
-      else if(draftReimCategory) category = draftReimCategory;
-      else if(editingReimItemId){
-        const existing = note.items.find(x=>x.id===editingReimItemId);
-        category = existing ? (existing.category||'Lainnya') : 'Lainnya';
-      } else category = 'Lainnya';
+      const category = customCat || draftReimCategory || 'Lainnya';
       if(!desc || amount<=0){ alert('Isi keterangan dan nominal dulu'); return; }
       if(!note.items) note.items = [];
-      if(editingReimItemId){
-        const item = note.items.find(x=>x.id===editingReimItemId);
-        if(item){ item.date = date; item.amount = amount; item.desc = desc; item.category = category; }
-        editingReimItemId = null;
-      } else {
-        note.items.push({id:uid(), date, amount, desc, category});
-      }
+      note.items.push({id:uid(), date, amount, desc, category});
       draftReimCategory = null;
       note.updatedAt = new Date().toISOString();
       render();
       await persistSave('notes', note);
     };
+    const nSaveEditReimBtn = document.getElementById('nSaveEditReimBtn');
+    if(nSaveEditReimBtn) nSaveEditReimBtn.onclick = async ()=>{
+      const noteId = nSaveEditReimBtn.dataset.noteId;
+      const itemId = nSaveEditReimBtn.dataset.itemId;
+      const note = state.notes.find(x=>x.id===noteId);
+      if(!note || !note.items) return;
+      const item = note.items.find(x=>x.id===itemId);
+      if(!item) return;
+      const date = document.getElementById('nReimEditDate').value || todayStr();
+      const amount = Number((document.getElementById('nReimEditAmount').value||'0').replace(/\D/g,''))||0;
+      const desc = document.getElementById('nReimEditDesc').value.trim();
+      const customCat = document.getElementById('nReimEditCatCustom').value.trim();
+      const category = customCat || draftReimEditCategory || item.category || 'Lainnya';
+      if(!desc || amount<=0){ alert('Isi keterangan dan nominal dulu'); return; }
+      item.date = date; item.amount = amount; item.desc = desc; item.category = category;
+      editingReimItemId = null;
+      draftReimEditCategory = null;
+      note.updatedAt = new Date().toISOString();
+      render();
+      await persistSave('notes', note);
+    };
     const nCancelEditReimBtn = document.getElementById('nCancelEditReimBtn');
-    if(nCancelEditReimBtn) nCancelEditReimBtn.onclick = ()=>{ editingReimItemId = null; draftReimCategory = null; render(); };
+    if(nCancelEditReimBtn) nCancelEditReimBtn.onclick = ()=>{ editingReimItemId = null; draftReimEditCategory = null; render(); };
     document.querySelectorAll('[data-pick-reim-cat]').forEach(el=>{
       el.onclick = ()=>{
-        draftReimCategory = el.dataset.pickReimCat;
-        const customEl = document.getElementById('nReimCatCustom');
-        if(customEl) customEl.value = '';
+        const target = el.dataset.reimCatTarget;
+        if(target==='edit'){
+          draftReimEditCategory = el.dataset.pickReimCat;
+          const customEl = document.getElementById('nReimEditCatCustom');
+          if(customEl) customEl.value = '';
+        } else {
+          draftReimCategory = el.dataset.pickReimCat;
+          const customEl = document.getElementById('nReimCatCustom');
+          if(customEl) customEl.value = '';
+        }
         render();
       };
     });
     document.querySelectorAll('[data-edit-note-item]').forEach(el=>{
       el.onclick = ()=>{
         editingReimItemId = el.dataset.itemId;
-        draftReimCategory = null;
+        draftReimEditCategory = null;
         render();
-        setTimeout(()=>{
-          const formEl = document.getElementById('nReimDate');
-          if(formEl) formEl.scrollIntoView({behavior:'smooth', block:'center'});
-        }, 50);
       };
     });
     document.querySelectorAll('[data-set-reimb-status]').forEach(el=>{
