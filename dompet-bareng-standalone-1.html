@@ -238,6 +238,13 @@
   .reimb-status-btn.active{ background:var(--gold-dark); color:#1a1a1a; border-color:var(--gold-dark); }
   .reimb-add-form{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px; }
   .reimb-add-form input{ width:100%; }
+  .reimb-cat-chip-row{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .reimb-cat-chip{ font-size:11.5px; padding:5px 11px; border-radius:100px; border:1px solid rgba(255,255,255,0.22); background:var(--paper-card-alt); color:var(--ink-soft); cursor:pointer; }
+  .reimb-cat-chip.active{ background:var(--gold-dark); color:#1a1a1a; border-color:var(--gold-dark); font-weight:600; }
+  .reimb-row-cat{ font-size:10.5px; color:var(--gold-dark); margin-top:2px; font-weight:600; text-transform:uppercase; letter-spacing:0.3px; }
+  .reimb-cat-breakdown{ margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1); }
+  .reimb-cat-breakdown-row{ display:flex; justify-content:space-between; font-size:12.5px; color:var(--ink-soft); padding:3px 0; }
+  .reimb-cat-breakdown-row .mono{ color:var(--ink); font-weight:600; }
   .cat-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; flex-wrap:wrap; gap:4px; }
   .cat-name{ font-weight:600; font-size:15px; display:flex; align-items:center; gap:9px; }
   .cat-icon-badge{
@@ -616,6 +623,7 @@
   let monthBudgetCatId = null;
   let addExistingCatOpen = false;
   let editingReimItemId = null;
+  let draftReimCategory = null;
   let txFilterCategoryPreset = null;
   let walletFormOpen = false;
   let catFormOpen = false;
@@ -1421,6 +1429,8 @@
       const deposit = Number(n.deposit)||0;
       const sisa = deposit - total;
       const editingItem = editingReimItemId ? items.find(it=>it.id===editingReimItemId) : null;
+      const REIMB_CATS = ['Tindakan Dokter','Transport','Lainnya'];
+      const draftCat = draftReimCategory || (editingItem ? (editingItem.category||'Lainnya') : 'Lainnya');
       html += '<div class="ledger-sheet no-rule" style="margin-top:14px;">';
       html += '<div class="field" style="margin-bottom:12px;"><label>Deposit Awal (opsional)</label><input id="nDeposit" type="text" inputmode="numeric" placeholder="0" value="'+(deposit>0?deposit.toLocaleString('id-ID'):'')+'"></div>';
       html += '<div class="reimb-status-row">';
@@ -1433,7 +1443,7 @@
       } else {
         items.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(it=>{
           html += '<div class="reimb-row">';
-          html += '<div class="reimb-row-info"><div class="reimb-row-desc">'+esc(it.desc)+'</div><div class="reimb-row-date">'+(it.date?formatDateShort(it.date):'')+'</div></div>';
+          html += '<div class="reimb-row-info"><div class="reimb-row-desc">'+esc(it.desc)+'</div><div class="reimb-row-date">'+(it.date?formatDateShort(it.date):'')+'</div><div class="reimb-row-cat">'+esc(it.category||'Lainnya')+'</div></div>';
           html += '<div class="reimb-row-amount mono">'+fmt(Number(it.amount)||0)+'</div>';
           html += '<button class="tx-del" data-edit-note-item="'+n.id+'" data-item-id="'+it.id+'" title="Edit" style="font-size:14px;">✎</button>';
           html += '<button class="tx-del" data-del-note-item="'+n.id+'" data-item-id="'+it.id+'" title="Hapus">✕</button>';
@@ -1444,6 +1454,19 @@
           html += '<div class="reimb-total-row" style="border-top:none;padding-top:4px;font-size:13px;"><span>Deposit</span><span class="mono">'+fmt(deposit)+'</span></div>';
           html += '<div class="reimb-total-row" style="padding-top:4px;"><span>Sisa</span><span class="mono" style="color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span></div>';
         }
+        const byCat = {};
+        items.forEach(it=>{
+          const cat = it.category || 'Lainnya';
+          byCat[cat] = (byCat[cat]||0) + (Number(it.amount)||0);
+        });
+        const catKeys = Object.keys(byCat).sort((a,b)=>byCat[b]-byCat[a]);
+        if(catKeys.length>1){
+          html += '<div class="reimb-cat-breakdown">';
+          catKeys.forEach(cat=>{
+            html += '<div class="reimb-cat-breakdown-row"><span>'+esc(cat)+'</span><span class="mono">'+fmt(byCat[cat])+'</span></div>';
+          });
+          html += '</div>';
+        }
       }
       if(editingItem){
         html += '<div style="margin-top:12px;font-size:12px;font-weight:700;color:var(--gold-dark);">✎ Mengedit item</div>';
@@ -1453,6 +1476,12 @@
       html += '<input id="nReimAmount" type="text" inputmode="numeric" placeholder="Nominal" value="'+(editingItem?Number(editingItem.amount).toLocaleString('id-ID'):'')+'">';
       html += '<input id="nReimDesc" placeholder="Keterangan pengeluaran" style="grid-column:span 2;" value="'+(editingItem?esc(editingItem.desc):'')+'">';
       html += '</div>';
+      html += '<div class="reimb-cat-chip-row">';
+      REIMB_CATS.forEach(cat=>{
+        html += '<div class="reimb-cat-chip'+(draftCat===cat?' active':'')+'" data-pick-reim-cat="'+esc(cat)+'">'+esc(cat)+'</div>';
+      });
+      html += '</div>';
+      html += '<input id="nReimCatCustom" placeholder="atau ketik kategori lain..." style="margin-top:8px;" value="'+(REIMB_CATS.includes(draftCat)?'':esc(draftCat))+'">';
       html += '<div style="display:flex;gap:8px;margin-top:8px;">';
       if(editingItem) html += '<button class="btn ghost small" id="nCancelEditReimBtn" style="flex:0 0 auto;">Batal</button>';
       html += '<button class="btn ghost small" id="nAddReimBtn" data-note-id="'+n.id+'" style="flex:1;">'+(editingItem?'✓ Update Item':'+ Tambah Item')+'</button>';
@@ -2418,7 +2447,7 @@
     const openNoteFormBtn = document.getElementById('openNoteFormBtn');
     if(openNoteFormBtn) openNoteFormBtn.onclick = ()=>{ noteFormOpen = true; render(); };
     document.querySelectorAll('[data-open-note]').forEach(el=>{
-      el.onclick = ()=>{ editNoteId = el.dataset.openNote; editingReimItemId = null; render(); };
+      el.onclick = ()=>{ editNoteId = el.dataset.openNote; editingReimItemId = null; draftReimCategory = null; render(); };
     });
     const noteTypePickerClose = document.getElementById('noteTypePickerClose');
     if(noteTypePickerClose) noteTypePickerClose.onclick = ()=>{ noteFormOpen = false; render(); };
@@ -2465,6 +2494,7 @@
       }
       editNoteId = null;
       editingReimItemId = null;
+      draftReimCategory = null;
       render();
     }
     const nTitleEl = document.getElementById('nTitle');
@@ -2543,24 +2573,42 @@
       const date = document.getElementById('nReimDate').value || todayStr();
       const amount = parseAmountInput('nReimAmount');
       const desc = document.getElementById('nReimDesc').value.trim();
+      const customCat = document.getElementById('nReimCatCustom').value.trim();
+      let category;
+      if(customCat) category = customCat;
+      else if(draftReimCategory) category = draftReimCategory;
+      else if(editingReimItemId){
+        const existing = note.items.find(x=>x.id===editingReimItemId);
+        category = existing ? (existing.category||'Lainnya') : 'Lainnya';
+      } else category = 'Lainnya';
       if(!desc || amount<=0){ alert('Isi keterangan dan nominal dulu'); return; }
       if(!note.items) note.items = [];
       if(editingReimItemId){
         const item = note.items.find(x=>x.id===editingReimItemId);
-        if(item){ item.date = date; item.amount = amount; item.desc = desc; }
+        if(item){ item.date = date; item.amount = amount; item.desc = desc; item.category = category; }
         editingReimItemId = null;
       } else {
-        note.items.push({id:uid(), date, amount, desc});
+        note.items.push({id:uid(), date, amount, desc, category});
       }
+      draftReimCategory = null;
       note.updatedAt = new Date().toISOString();
       render();
       await persistSave('notes', note);
     };
     const nCancelEditReimBtn = document.getElementById('nCancelEditReimBtn');
-    if(nCancelEditReimBtn) nCancelEditReimBtn.onclick = ()=>{ editingReimItemId = null; render(); };
+    if(nCancelEditReimBtn) nCancelEditReimBtn.onclick = ()=>{ editingReimItemId = null; draftReimCategory = null; render(); };
+    document.querySelectorAll('[data-pick-reim-cat]').forEach(el=>{
+      el.onclick = ()=>{
+        draftReimCategory = el.dataset.pickReimCat;
+        const customEl = document.getElementById('nReimCatCustom');
+        if(customEl) customEl.value = '';
+        render();
+      };
+    });
     document.querySelectorAll('[data-edit-note-item]').forEach(el=>{
       el.onclick = ()=>{
         editingReimItemId = el.dataset.itemId;
+        draftReimCategory = null;
         render();
       };
     });
