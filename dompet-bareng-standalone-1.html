@@ -625,6 +625,7 @@
   let editingReimItemId = null;
   let draftReimCategory = null;
   let draftReimEditCategory = null;
+  let reimSortMode = 'date-asc';
   let txFilterCategoryPreset = null;
   let walletFormOpen = false;
   let catFormOpen = false;
@@ -1437,10 +1438,26 @@
       html += '<div class="reimb-status-btn'+(n.status==='diajukan'?' active':'')+'" data-set-reimb-status="'+n.id+'" data-status="diajukan">Sudah Diajukan</div>';
       html += '<div class="reimb-status-btn'+(n.status==='cair'?' active':'')+'" data-set-reimb-status="'+n.id+'" data-status="cair">Sudah Cair</div>';
       html += '</div>';
+      if(items.length>0){
+        html += '<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">';
+        html += '<select id="reimSortSelect" style="font-size:12px;padding:6px 10px;width:auto;">';
+        const sortOptions = [['date-asc','Tanggal: Lama ke Baru'],['date-desc','Tanggal: Baru ke Lama'],['amount-desc','Nominal: Terbesar'],['amount-asc','Nominal: Terkecil']];
+        sortOptions.forEach(([val,label])=>{
+          html += '<option value="'+val+'"'+(reimSortMode===val?' selected':'')+'>'+label+'</option>';
+        });
+        html += '</select>';
+        html += '</div>';
+      }
       if(items.length===0){
         html += '<div class="empty-state" style="padding:10px 0;">Belum ada item pengeluaran.</div>';
       } else {
-        items.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(it=>{
+        const sortedItems = items.slice().sort((a,b)=>{
+          if(reimSortMode==='date-desc') return (b.date||'').localeCompare(a.date||'');
+          if(reimSortMode==='amount-desc') return (Number(b.amount)||0)-(Number(a.amount)||0);
+          if(reimSortMode==='amount-asc') return (Number(a.amount)||0)-(Number(b.amount)||0);
+          return (a.date||'').localeCompare(b.date||'');
+        });
+        sortedItems.forEach(it=>{
           if(it.id===editingReimItemId){
             const editCat = draftReimEditCategory || it.category || 'Lainnya';
             html += '<div class="reimb-row" style="flex-wrap:wrap;align-items:stretch;padding-bottom:14px;">';
@@ -2530,6 +2547,8 @@
       const changed = commitNoteTextFields(editNoteId);
       if(changed){ await persistSave('notes', changed); render(); }
     };
+    const reimSortSelect = document.getElementById('reimSortSelect');
+    if(reimSortSelect) reimSortSelect.onchange = ()=>{ reimSortMode = reimSortSelect.value; render(); };
     const noteDetailClose = document.getElementById('noteDetailClose');
     if(noteDetailClose) noteDetailClose.onclick = closeNoteDetail;
     attachSwipeBack('noteDetailPage', ()=>{ closeNoteDetail(); });
@@ -2644,6 +2663,10 @@
         editingReimItemId = el.dataset.itemId;
         draftReimEditCategory = null;
         render();
+        setTimeout(()=>{
+          const formEl = document.getElementById('nReimEditDate');
+          if(formEl) formEl.scrollIntoView({behavior:'smooth', block:'center'});
+        }, 50);
       };
     });
     document.querySelectorAll('[data-set-reimb-status]').forEach(el=>{
