@@ -2610,6 +2610,10 @@
         editingReimItemId = el.dataset.itemId;
         draftReimCategory = null;
         render();
+        setTimeout(()=>{
+          const formEl = document.getElementById('nReimDate');
+          if(formEl) formEl.scrollIntoView({behavior:'smooth', block:'center'});
+        }, 50);
       };
     });
     document.querySelectorAll('[data-set-reimb-status]').forEach(el=>{
