@@ -534,6 +534,8 @@
     flex-shrink:0; display:flex; align-items:center; justify-content:center;
   }
   .cat-detail-title{ font-size:16px; font-weight:700; }
+  .note-title-input{ font-size:17px; font-weight:700; background:none; border:none; padding:0; width:100%; color:var(--ink); }
+  .note-title-input:focus{ outline:none; }
   .cat-detail-sub{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
 
   .toast{
@@ -1306,14 +1308,31 @@
     return html;
   }
 
+  function normalizeNote(n){
+    if(n.type==='reimbursement'){
+      if(!n.items) n.items = [];
+      if(!n.status) n.status = 'menunggu';
+      return n;
+    }
+    // migrate legacy shapes into unified 'note' type
+    if(n.type==='bullet' || n.type==='checklist'){
+      n.items = (n.items||[]).map(it=>({id:it.id, text:it.text, checked: n.type==='checklist' ? !!it.checked : false, checkbox: n.type==='checklist'}));
+      n.body = n.body || '';
+      n.type = 'note';
+    } else {
+      n.type = 'note';
+      if(!n.body) n.body = '';
+      if(!n.items) n.items = [];
+    }
+    return n;
+  }
+
   function renderNoteTypePicker(){
     let html = '<div class="tx-modal-backdrop" id="noteTypePickerBackdrop"><div class="tx-modal">';
     html += '<div class="tx-modal-top"><div class="tx-modal-title">Buat Catatan</div><button class="tx-modal-close" id="noteTypePickerClose" title="Tutup">✕</button></div>';
     html += '<div class="tx-modal-body" style="border-top:none;padding-top:0;">';
     html += '<div class="note-type-pick-row">';
-    html += '<div class="note-type-pick-btn" data-pick-note-type="text"><span class="icon">📝</span><span class="label">Teks Bebas</span></div>';
-    html += '<div class="note-type-pick-btn" data-pick-note-type="bullet"><span class="icon">•</span><span class="label">Poin-Poin</span></div>';
-    html += '<div class="note-type-pick-btn" data-pick-note-type="checklist"><span class="icon">☑</span><span class="label">Checklist</span></div>';
+    html += '<div class="note-type-pick-btn" data-pick-note-type="note"><span class="icon">📝</span><span class="label">Catatan</span></div>';
     html += '<div class="note-type-pick-btn" data-pick-note-type="reimbursement"><span class="icon">🧾</span><span class="label">Reimbursement</span></div>';
     html += '</div>';
     html += '</div>';
@@ -1324,8 +1343,6 @@
 
   function noteTypeBadge(type){
     if(type==='reimbursement') return '<span class="note-type-badge reimb">Reimbursement</span>';
-    if(type==='checklist') return '<span class="note-type-badge checklist">Checklist</span>';
-    if(type==='bullet') return '<span class="note-type-badge bullet">Poin</span>';
     return '';
   }
 
@@ -1336,53 +1353,62 @@
       const statusLabel = n.status==='cair' ? 'Sudah Cair' : (n.status==='diajukan' ? 'Sudah Diajukan' : 'Menunggu');
       return 'Rp '+total.toLocaleString('id-ID')+' · '+items.length+' item · '+statusLabel;
     }
-    if(n.type==='checklist'){
-      const items = n.items||[];
-      const done = items.filter(it=>it.checked).length;
-      return done+'/'+items.length+' selesai';
+    const items = n.items||[];
+    const parts = [];
+    const bodySnippet = (n.body||'').replace(/\n/g,' ').trim();
+    if(bodySnippet) parts.push(bodySnippet.slice(0,70)+(bodySnippet.length>70?'…':''));
+    if(items.length>0){
+      const checklistItems = items.filter(it=>it.checkbox);
+      if(checklistItems.length>0){
+        const done = checklistItems.filter(it=>it.checked).length;
+        parts.push(done+'/'+checklistItems.length+' selesai');
+      }
+      const bulletCount = items.length - checklistItems.length;
+      if(bulletCount>0) parts.push(bulletCount+' poin');
     }
-    if(n.type==='bullet'){
-      const items = n.items||[];
-      return items.slice(0,3).map(it=>'• '+it.text).join('  ');
-    }
-    const snippet = (n.body||'').replace(/\n/g,' ').slice(0,90);
-    return snippet + (n.body && n.body.length>90?'…':'');
+    return parts.join(' · ');
   }
 
-  function renderNoteEditModal(n){
+  function renderNoteDetailPage(n){
     if(!n) return '';
-    const type = n.type || 'text';
-    let html = '<div class="tx-modal-backdrop" id="noteEditModalBackdrop"><div class="tx-modal">';
-    html += '<div class="tx-modal-top"><div class="tx-modal-title">'+noteTypeBadge(type)+'</div><button class="tx-modal-close" id="noteEditModalClose" title="Tutup">✕</button></div>';
-    html += '<div class="tx-modal-body" style="border-top:none;padding-top:0;">';
-    html += field('Judul', '<input id="nTitle" placeholder="Judul catatan" value="'+esc(n.title||'')+'">', 'span2');
+    normalizeNote(n);
+    const type = n.type;
+    let html = '<div class="cat-detail-page" id="noteDetailPage">';
+    html += '<div class="cat-detail-header"><div style="flex:1;"><input id="nTitle" class="note-title-input" placeholder="Judul catatan" value="'+esc(n.title||'')+'">'+(type==='reimbursement'?'<div class="cat-detail-sub">'+noteTypeBadge(type)+'</div>':'')+'</div><button class="note-item-del" id="deleteNoteBtn" data-note-id="'+n.id+'" title="Hapus" style="font-size:19px;">🗑</button><button id="noteDetailClose" title="Tutup">✕</button></div>';
 
-    if(type==='text'){
-      html += '<textarea id="nBody" class="tx-add-notes" style="min-height:180px;" placeholder="Tulis catatan di sini...">'+esc(n.body||'')+'</textarea>';
-    } else if(type==='bullet' || type==='checklist'){
+    if(type==='note'){
+      html += '<div class="ledger-sheet no-rule" style="margin-top:14px;">';
+      html += '<textarea id="nBody" class="tx-add-notes" style="min-height:120px;" placeholder="Tulis catatan di sini...">'+esc(n.body||'')+'</textarea>';
+      html += '</div>';
+
       const items = n.items||[];
-      html += '<div class="field span2">';
+      html += '<div class="ledger-sheet no-rule">';
+      html += '<h2>Poin & Checklist</h2>';
       if(items.length===0){
-        html += '<div class="empty-state" style="padding:14px 0;">Belum ada poin. Tambah di bawah.</div>';
+        html += '<div class="empty-state" style="padding:10px 0;">Belum ada poin. Tambah di bawah.</div>';
       } else {
         items.forEach(it=>{
           html += '<div class="note-item-row">';
-          if(type==='checklist'){
+          if(it.checkbox){
             html += '<div class="note-item-check'+(it.checked?' checked':'')+'" data-toggle-note-item="'+n.id+'" data-item-id="'+it.id+'">'+(it.checked?'✓':'')+'</div>';
           } else {
             html += '<div class="note-item-dot"></div>';
           }
-          html += '<div class="note-item-text'+(it.checked&&type==='checklist'?' done':'')+'">'+esc(it.text)+'</div>';
+          html += '<div class="note-item-text'+(it.checked&&it.checkbox?' done':'')+'">'+esc(it.text)+'</div>';
           html += '<button class="note-item-del" data-del-note-item="'+n.id+'" data-item-id="'+it.id+'">✕</button>';
           html += '</div>';
         });
       }
-      html += '<div class="note-add-item-row"><input id="nNewItem" placeholder="Tambah poin baru..."><button class="btn ghost small" id="nAddItemBtn" data-note-id="'+n.id+'">+ Tambah</button></div>';
+      html += '<div class="note-add-item-row"><input id="nNewItem" placeholder="Tulis poin..."></div>';
+      html += '<div style="display:flex;gap:8px;margin-top:8px;">';
+      html += '<button class="btn ghost small" id="nAddBulletBtn" data-note-id="'+n.id+'" style="flex:1;">• Tambah Poin</button>';
+      html += '<button class="btn ghost small" id="nAddChecklistBtn" data-note-id="'+n.id+'" style="flex:1;">☑ Tambah Checklist</button>';
+      html += '</div>';
       html += '</div>';
     } else if(type==='reimbursement'){
       const items = n.items||[];
       const total = items.reduce((s,it)=>s+(Number(it.amount)||0),0);
-      html += '<div class="field span2">';
+      html += '<div class="ledger-sheet no-rule" style="margin-top:14px;">';
       html += '<div class="reimb-status-row">';
       html += '<div class="reimb-status-btn'+(!n.status||n.status==='menunggu'?' active':'')+'" data-set-reimb-status="'+n.id+'" data-status="menunggu">Menunggu</div>';
       html += '<div class="reimb-status-btn'+(n.status==='diajukan'?' active':'')+'" data-set-reimb-status="'+n.id+'" data-status="diajukan">Sudah Diajukan</div>';
@@ -1410,8 +1436,6 @@
     }
 
     html += '</div>';
-    html += '<div class="tx-modal-actions"><button class="btn danger small" id="deleteNoteBtn" data-note-id="'+n.id+'" style="flex:0 0 auto;padding:13px 16px;">Hapus</button><button class="cancel-btn" id="noteEditCancelBtn">✕ TUTUP</button><button class="save-btn" id="saveNoteBtn" data-note-id="'+n.id+'">✓ SIMPAN</button></div>';
-    html += '</div></div>';
     return html;
   }
 
@@ -1421,9 +1445,10 @@
       html += '<div class="empty-state">Belum ada catatan. Tap + Tambah Catatan di atas.</div>';
     } else {
       state.notes.slice().sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||'')).forEach(n=>{
+        normalizeNote(n);
         const snippet = noteSnippet(n);
         html += '<div class="note-card" data-open-note="'+n.id+'">';
-        html += '<div class="note-title">'+noteTypeBadge(n.type||'text')+'<span>'+esc(n.title||'(tanpa judul)')+'</span></div>';
+        html += '<div class="note-title">'+noteTypeBadge(n.type)+'<span>'+esc(n.title||'(tanpa judul)')+'</span></div>';
         if(snippet) html += '<div class="note-snippet">'+esc(snippet)+'</div>';
         html += '<div class="note-date">'+noteDateLabel(n.updatedAt)+'</div>';
         html += '</div>';
@@ -1912,15 +1937,15 @@
     if(noteFormOpen){
       html += renderNoteTypePicker();
     }
-    if(editNoteId){
-      const en = state.notes.find(x=>x.id===editNoteId);
-      if(en) html += renderNoteEditModal(en); else editNoteId = null;
-    }
     if(expandedCatId){
       html += renderCatDetailPage(expandedCatId);
     }
     if(expandedWalletId){
       html += renderWalletDetailPage(expandedWalletId);
+    }
+    if(editNoteId){
+      const en = state.notes.find(x=>x.id===editNoteId);
+      if(en) html += renderNoteDetailPage(en); else editNoteId = null;
     }
     root.innerHTML = html;
     attachAppHandlers();
@@ -2380,10 +2405,9 @@
     document.querySelectorAll('[data-pick-note-type]').forEach(el=>{
       el.onclick = async ()=>{
         const type = el.dataset.pickNoteType;
-        const note = {id:uid(), type, title:'', updatedAt:new Date().toISOString()};
-        if(type==='text') note.body = '';
-        if(type==='bullet' || type==='checklist') note.items = [];
-        if(type==='reimbursement'){ note.items = []; note.status = 'menunggu'; }
+        const note = {id:uid(), type, title:'', updatedAt:new Date().toISOString(), items:[]};
+        if(type==='note') note.body = '';
+        if(type==='reimbursement') note.status = 'menunggu';
         state.notes.push(note);
         noteFormOpen = false;
         editNoteId = note.id;
@@ -2391,32 +2415,39 @@
         await persistSave('notes', note);
       };
     });
-    const noteEditModalClose = document.getElementById('noteEditModalClose');
-    if(noteEditModalClose) noteEditModalClose.onclick = ()=>{ noteFormOpen = false; editNoteId = null; render(); };
-    const noteEditCancelBtn = document.getElementById('noteEditCancelBtn');
-    if(noteEditCancelBtn) noteEditCancelBtn.onclick = ()=>{ noteFormOpen = false; editNoteId = null; render(); };
-    const noteEditModalBackdrop = document.getElementById('noteEditModalBackdrop');
-    if(noteEditModalBackdrop) noteEditModalBackdrop.onclick = (e)=>{
-      if(e.target === noteEditModalBackdrop){ noteFormOpen = false; editNoteId = null; render(); }
-    };
-    const saveNoteBtn = document.getElementById('saveNoteBtn');
-    if(saveNoteBtn) saveNoteBtn.onclick = async ()=>{
-      const id = saveNoteBtn.dataset.noteId;
-      const note = state.notes.find(x=>x.id===id);
-      if(!note) return;
-      const title = document.getElementById('nTitle').value.trim();
+
+    function commitNoteTextFields(noteId){
+      const note = state.notes.find(x=>x.id===noteId);
+      if(!note) return null;
+      const titleEl = document.getElementById('nTitle');
       const bodyEl = document.getElementById('nBody');
-      if(bodyEl && !title && !bodyEl.value.trim()){ alert('Isi judul atau catatan dulu'); return; }
-      if(saveNoteBtn.disabled) return;
-      saveNoteBtn.disabled = true; saveNoteBtn.textContent = '... Menyimpan';
-      note.title = title;
-      if(bodyEl) note.body = bodyEl.value;
-      note.updatedAt = new Date().toISOString();
-      noteFormOpen = false;
+      let changed = false;
+      if(titleEl && titleEl.value.trim() !== (note.title||'')){ note.title = titleEl.value.trim(); changed = true; }
+      if(bodyEl && bodyEl.value !== (note.body||'')){ note.body = bodyEl.value; changed = true; }
+      if(changed) note.updatedAt = new Date().toISOString();
+      return changed ? note : null;
+    }
+    async function closeNoteDetail(){
+      if(editNoteId){
+        const changed = commitNoteTextFields(editNoteId);
+        if(changed) await persistSave('notes', changed);
+      }
       editNoteId = null;
-      await persistSave('notes', note);
       render();
+    }
+    const nTitleEl = document.getElementById('nTitle');
+    if(nTitleEl) nTitleEl.onblur = async ()=>{
+      const changed = commitNoteTextFields(editNoteId);
+      if(changed) await persistSave('notes', changed);
     };
+    const nBodyEl = document.getElementById('nBody');
+    if(nBodyEl) nBodyEl.onblur = async ()=>{
+      const changed = commitNoteTextFields(editNoteId);
+      if(changed) await persistSave('notes', changed);
+    };
+    const noteDetailClose = document.getElementById('noteDetailClose');
+    if(noteDetailClose) noteDetailClose.onclick = closeNoteDetail;
+    attachSwipeBack('noteDetailPage', ()=>{ closeNoteDetail(); });
     const deleteNoteBtn = document.getElementById('deleteNoteBtn');
     if(deleteNoteBtn) deleteNoteBtn.onclick = async ()=>{
       const id = deleteNoteBtn.dataset.noteId;
@@ -2426,19 +2457,21 @@
       render();
       await persistDelete('notes', id);
     };
-    const nAddItemBtn = document.getElementById('nAddItemBtn');
-    if(nAddItemBtn) nAddItemBtn.onclick = async ()=>{
-      const id = nAddItemBtn.dataset.noteId;
-      const note = state.notes.find(x=>x.id===id);
+    function addNoteItem(noteId, checkbox){
+      const note = state.notes.find(x=>x.id===noteId);
       const input = document.getElementById('nNewItem');
       const text = input ? input.value.trim() : '';
-      if(!text) return;
+      if(!note || !text) return;
       if(!note.items) note.items = [];
-      note.items.push({id:uid(), text, checked:false});
+      note.items.push({id:uid(), text, checked:false, checkbox});
       note.updatedAt = new Date().toISOString();
       render();
-      await persistSave('notes', note);
-    };
+      persistSave('notes', note);
+    }
+    const nAddBulletBtn = document.getElementById('nAddBulletBtn');
+    if(nAddBulletBtn) nAddBulletBtn.onclick = ()=> addNoteItem(nAddBulletBtn.dataset.noteId, false);
+    const nAddChecklistBtn = document.getElementById('nAddChecklistBtn');
+    if(nAddChecklistBtn) nAddChecklistBtn.onclick = ()=> addNoteItem(nAddChecklistBtn.dataset.noteId, true);
     document.querySelectorAll('[data-toggle-note-item]').forEach(el=>{
       el.onclick = async ()=>{
         const noteId = el.dataset.toggleNoteItem;
