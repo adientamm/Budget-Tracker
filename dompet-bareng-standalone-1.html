@@ -203,9 +203,42 @@
     border-radius:8px; padding:12px 14px; margin-bottom:8px; cursor:pointer;
   }
   .note-card:last-child{ margin-bottom:0; }
-  .note-title{ font-weight:700; font-size:14.5px; margin-bottom:4px; }
+  .note-title{ font-weight:700; font-size:14.5px; margin-bottom:4px; display:flex; align-items:center; gap:6px; }
   .note-snippet{ font-size:13px; color:var(--ink-soft); margin-bottom:6px; line-height:1.4; }
   .note-date{ font-size:11px; color:var(--ink-soft); font-family:'Nunito',sans-serif; font-variant-numeric:tabular-nums; }
+  .note-type-badge{ font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; padding:2px 7px; border-radius:100px; background:rgba(255,255,255,0.08); color:var(--ink-soft); }
+  .note-type-badge.reimb{ background:rgba(200,164,90,0.2); color:var(--gold-dark); }
+  .note-type-badge.checklist{ background:rgba(90,160,160,0.22); color:var(--teal); }
+  .note-type-badge.bullet{ background:rgba(90,120,200,0.22); color:var(--blue); }
+  .note-type-pick-row{ display:grid; grid-template-columns:repeat(2,1fr); gap:9px; }
+  .note-type-pick-btn{
+    background:var(--paper-card-alt); border:1px solid rgba(255,255,255,0.22); border-radius:10px;
+    padding:16px 10px; text-align:center; cursor:pointer; color:var(--ink);
+  }
+  .note-type-pick-btn .icon{ font-size:22px; display:block; margin-bottom:6px; }
+  .note-type-pick-btn .label{ font-size:12.5px; font-weight:600; }
+  .note-item-row{ display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.08); }
+  .note-item-row:last-child{ border-bottom:none; }
+  .note-item-check{ width:19px; height:19px; flex:0 0 auto; border-radius:5px; border:1.5px solid var(--ink-soft); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; }
+  .note-item-check.checked{ background:var(--green); border-color:var(--green); color:#fff; }
+  .note-item-dot{ width:6px; height:6px; border-radius:50%; background:var(--ink-soft); flex:0 0 auto; margin:0 6px; }
+  .note-item-text{ flex:1; font-size:14px; word-break:break-word; }
+  .note-item-text.done{ text-decoration:line-through; color:var(--ink-soft); }
+  .note-item-del{ background:none; border:none; color:var(--red); font-size:16px; cursor:pointer; padding:2px 6px; flex:0 0 auto; }
+  .note-add-item-row{ display:flex; gap:8px; margin-top:10px; }
+  .note-add-item-row input{ flex:1; }
+  .reimb-row{ display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid rgba(255,255,255,0.08); }
+  .reimb-row:last-child{ border-bottom:none; }
+  .reimb-row-info{ flex:1; min-width:0; }
+  .reimb-row-desc{ font-size:14px; font-weight:600; }
+  .reimb-row-date{ font-size:11.5px; color:var(--ink-soft); margin-top:1px; }
+  .reimb-row-amount{ font-size:14px; font-weight:700; white-space:nowrap; }
+  .reimb-total-row{ display:flex; justify-content:space-between; align-items:center; padding-top:12px; margin-top:6px; border-top:2px solid rgba(255,255,255,0.18); font-weight:700; font-size:15px; }
+  .reimb-status-row{ display:flex; gap:8px; margin-bottom:12px; }
+  .reimb-status-btn{ flex:1; padding:9px 6px; border-radius:8px; border:1px solid rgba(255,255,255,0.22); background:var(--paper-card-alt); color:var(--ink-soft); font-size:12px; font-weight:700; text-align:center; cursor:pointer; }
+  .reimb-status-btn.active{ background:var(--gold-dark); color:#1a1a1a; border-color:var(--gold-dark); }
+  .reimb-add-form{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px; }
+  .reimb-add-form input{ width:100%; }
   .cat-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; flex-wrap:wrap; gap:4px; }
   .cat-name{ font-weight:600; font-size:15px; display:flex; align-items:center; gap:9px; }
   .cat-icon-badge{
@@ -603,6 +636,13 @@
     return new Date(m+'-01').toLocaleDateString('id-ID',{month:'long'});
   }
   function noteDateLabel(dateStr){
+    return formatDateShort2(dateStr);
+  }
+  function formatDateShort(dateStr){
+    if(!dateStr) return '';
+    return new Date(dateStr+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'});
+  }
+  function formatDateShort2(dateStr){
     if(!dateStr) return '';
     const d = new Date(dateStr);
     return d.toLocaleDateString('id-ID',{day:'2-digit', month:'short', year:'numeric'})+' · '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
@@ -1266,16 +1306,111 @@
     return html;
   }
 
-  function renderNoteEditModal(n){
-    const isNew = !n;
-    const note = n || {id:null, title:'', body:'', updatedAt:new Date().toISOString()};
-    let html = '<div class="tx-modal-backdrop" id="noteEditModalBackdrop"><div class="tx-modal">';
-    html += '<div class="tx-modal-top"><div class="tx-modal-title">'+(isNew?'Tambah Catatan':'Edit Catatan')+'</div><button class="tx-modal-close" id="noteEditModalClose" title="Tutup">✕</button></div>';
+  function renderNoteTypePicker(){
+    let html = '<div class="tx-modal-backdrop" id="noteTypePickerBackdrop"><div class="tx-modal">';
+    html += '<div class="tx-modal-top"><div class="tx-modal-title">Buat Catatan</div><button class="tx-modal-close" id="noteTypePickerClose" title="Tutup">✕</button></div>';
     html += '<div class="tx-modal-body" style="border-top:none;padding-top:0;">';
-    html += field('Judul', '<input id="nTitle" placeholder="Judul catatan" value="'+esc(note.title)+'">', 'span2');
-    html += '<textarea id="nBody" class="tx-add-notes" style="min-height:180px;" placeholder="Tulis catatan di sini...">'+esc(note.body)+'</textarea>';
+    html += '<div class="note-type-pick-row">';
+    html += '<div class="note-type-pick-btn" data-pick-note-type="text"><span class="icon">📝</span><span class="label">Teks Bebas</span></div>';
+    html += '<div class="note-type-pick-btn" data-pick-note-type="bullet"><span class="icon">•</span><span class="label">Poin-Poin</span></div>';
+    html += '<div class="note-type-pick-btn" data-pick-note-type="checklist"><span class="icon">☑</span><span class="label">Checklist</span></div>';
+    html += '<div class="note-type-pick-btn" data-pick-note-type="reimbursement"><span class="icon">🧾</span><span class="label">Reimbursement</span></div>';
     html += '</div>';
-    html += '<div class="tx-modal-actions">'+(isNew?'':'<button class="btn danger small" id="deleteNoteBtn" data-note-id="'+note.id+'" style="flex:0 0 auto;padding:13px 16px;">Hapus</button>')+'<button class="cancel-btn" id="noteEditCancelBtn">✕ BATAL</button><button class="save-btn" id="saveNoteBtn" data-note-id="'+(note.id||'')+'">✓ SIMPAN</button></div>';
+    html += '</div>';
+    html += '<div class="tx-modal-actions"><button class="cancel-btn" id="noteTypePickerCancelBtn">✕ BATAL</button></div>';
+    html += '</div></div>';
+    return html;
+  }
+
+  function noteTypeBadge(type){
+    if(type==='reimbursement') return '<span class="note-type-badge reimb">Reimbursement</span>';
+    if(type==='checklist') return '<span class="note-type-badge checklist">Checklist</span>';
+    if(type==='bullet') return '<span class="note-type-badge bullet">Poin</span>';
+    return '';
+  }
+
+  function noteSnippet(n){
+    if(n.type==='reimbursement'){
+      const items = n.items||[];
+      const total = items.reduce((s,it)=>s+(Number(it.amount)||0),0);
+      const statusLabel = n.status==='cair' ? 'Sudah Cair' : (n.status==='diajukan' ? 'Sudah Diajukan' : 'Menunggu');
+      return 'Rp '+total.toLocaleString('id-ID')+' · '+items.length+' item · '+statusLabel;
+    }
+    if(n.type==='checklist'){
+      const items = n.items||[];
+      const done = items.filter(it=>it.checked).length;
+      return done+'/'+items.length+' selesai';
+    }
+    if(n.type==='bullet'){
+      const items = n.items||[];
+      return items.slice(0,3).map(it=>'• '+it.text).join('  ');
+    }
+    const snippet = (n.body||'').replace(/\n/g,' ').slice(0,90);
+    return snippet + (n.body && n.body.length>90?'…':'');
+  }
+
+  function renderNoteEditModal(n){
+    if(!n) return '';
+    const type = n.type || 'text';
+    let html = '<div class="tx-modal-backdrop" id="noteEditModalBackdrop"><div class="tx-modal">';
+    html += '<div class="tx-modal-top"><div class="tx-modal-title">'+noteTypeBadge(type)+'</div><button class="tx-modal-close" id="noteEditModalClose" title="Tutup">✕</button></div>';
+    html += '<div class="tx-modal-body" style="border-top:none;padding-top:0;">';
+    html += field('Judul', '<input id="nTitle" placeholder="Judul catatan" value="'+esc(n.title||'')+'">', 'span2');
+
+    if(type==='text'){
+      html += '<textarea id="nBody" class="tx-add-notes" style="min-height:180px;" placeholder="Tulis catatan di sini...">'+esc(n.body||'')+'</textarea>';
+    } else if(type==='bullet' || type==='checklist'){
+      const items = n.items||[];
+      html += '<div class="field span2">';
+      if(items.length===0){
+        html += '<div class="empty-state" style="padding:14px 0;">Belum ada poin. Tambah di bawah.</div>';
+      } else {
+        items.forEach(it=>{
+          html += '<div class="note-item-row">';
+          if(type==='checklist'){
+            html += '<div class="note-item-check'+(it.checked?' checked':'')+'" data-toggle-note-item="'+n.id+'" data-item-id="'+it.id+'">'+(it.checked?'✓':'')+'</div>';
+          } else {
+            html += '<div class="note-item-dot"></div>';
+          }
+          html += '<div class="note-item-text'+(it.checked&&type==='checklist'?' done':'')+'">'+esc(it.text)+'</div>';
+          html += '<button class="note-item-del" data-del-note-item="'+n.id+'" data-item-id="'+it.id+'">✕</button>';
+          html += '</div>';
+        });
+      }
+      html += '<div class="note-add-item-row"><input id="nNewItem" placeholder="Tambah poin baru..."><button class="btn ghost small" id="nAddItemBtn" data-note-id="'+n.id+'">+ Tambah</button></div>';
+      html += '</div>';
+    } else if(type==='reimbursement'){
+      const items = n.items||[];
+      const total = items.reduce((s,it)=>s+(Number(it.amount)||0),0);
+      html += '<div class="field span2">';
+      html += '<div class="reimb-status-row">';
+      html += '<div class="reimb-status-btn'+(!n.status||n.status==='menunggu'?' active':'')+'" data-set-reimb-status="'+n.id+'" data-status="menunggu">Menunggu</div>';
+      html += '<div class="reimb-status-btn'+(n.status==='diajukan'?' active':'')+'" data-set-reimb-status="'+n.id+'" data-status="diajukan">Sudah Diajukan</div>';
+      html += '<div class="reimb-status-btn'+(n.status==='cair'?' active':'')+'" data-set-reimb-status="'+n.id+'" data-status="cair">Sudah Cair</div>';
+      html += '</div>';
+      if(items.length===0){
+        html += '<div class="empty-state" style="padding:10px 0;">Belum ada item pengeluaran.</div>';
+      } else {
+        items.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(it=>{
+          html += '<div class="reimb-row">';
+          html += '<div class="reimb-row-info"><div class="reimb-row-desc">'+esc(it.desc)+'</div><div class="reimb-row-date">'+(it.date?formatDateShort(it.date):'')+'</div></div>';
+          html += '<div class="reimb-row-amount mono">'+fmt(Number(it.amount)||0)+'</div>';
+          html += '<button class="note-item-del" data-del-note-item="'+n.id+'" data-item-id="'+it.id+'">✕</button>';
+          html += '</div>';
+        });
+        html += '<div class="reimb-total-row"><span>Total</span><span class="mono">'+fmt(total)+'</span></div>';
+      }
+      html += '<div class="reimb-add-form">';
+      html += '<input id="nReimDate" type="date" value="'+todayStr()+'">';
+      html += '<input id="nReimAmount" type="text" inputmode="numeric" placeholder="Nominal">';
+      html += '<input id="nReimDesc" placeholder="Keterangan pengeluaran" style="grid-column:span 2;">';
+      html += '</div>';
+      html += '<button class="btn ghost small" id="nAddReimBtn" data-note-id="'+n.id+'" style="margin-top:8px;width:100%;">+ Tambah Item</button>';
+      html += '</div>';
+    }
+
+    html += '</div>';
+    html += '<div class="tx-modal-actions"><button class="btn danger small" id="deleteNoteBtn" data-note-id="'+n.id+'" style="flex:0 0 auto;padding:13px 16px;">Hapus</button><button class="cancel-btn" id="noteEditCancelBtn">✕ TUTUP</button><button class="save-btn" id="saveNoteBtn" data-note-id="'+n.id+'">✓ SIMPAN</button></div>';
     html += '</div></div>';
     return html;
   }
@@ -1286,10 +1421,10 @@
       html += '<div class="empty-state">Belum ada catatan. Tap + Tambah Catatan di atas.</div>';
     } else {
       state.notes.slice().sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||'')).forEach(n=>{
-        const snippet = (n.body||'').replace(/\n/g,' ').slice(0,90);
+        const snippet = noteSnippet(n);
         html += '<div class="note-card" data-open-note="'+n.id+'">';
-        html += '<div class="note-title">'+esc(n.title||'(tanpa judul)')+'</div>';
-        if(snippet) html += '<div class="note-snippet">'+esc(snippet)+(n.body && n.body.length>90?'…':'')+'</div>';
+        html += '<div class="note-title">'+noteTypeBadge(n.type||'text')+'<span>'+esc(n.title||'(tanpa judul)')+'</span></div>';
+        if(snippet) html += '<div class="note-snippet">'+esc(snippet)+'</div>';
         html += '<div class="note-date">'+noteDateLabel(n.updatedAt)+'</div>';
         html += '</div>';
       });
@@ -1775,7 +1910,7 @@
       html += renderAddExistingCatModal();
     }
     if(noteFormOpen){
-      html += renderNoteEditModal(null);
+      html += renderNoteTypePicker();
     }
     if(editNoteId){
       const en = state.notes.find(x=>x.id===editNoteId);
@@ -1874,7 +2009,7 @@
     document.querySelectorAll('[data-goto-current]').forEach(b=>{
       b.onclick = ()=>{ selectedMonth = null; render(); };
     });
-    ['wStart','cBudget','etAmount','ewStart','ecBudget','mbAmount'].forEach(attachThousandFormat);
+    ['wStart','cBudget','etAmount','ewStart','ecBudget','mbAmount','nReimAmount'].forEach(attachThousandFormat);
     state.wallets.forEach(w=>attachThousandFormat('ewStart_'+w.id));
     state.categories.forEach(c=>attachThousandFormat('ecBudget_'+c.id));
     document.querySelectorAll('.tab-btn').forEach(b=>{
@@ -2234,6 +2369,28 @@
     document.querySelectorAll('[data-open-note]').forEach(el=>{
       el.onclick = ()=>{ editNoteId = el.dataset.openNote; render(); };
     });
+    const noteTypePickerClose = document.getElementById('noteTypePickerClose');
+    if(noteTypePickerClose) noteTypePickerClose.onclick = ()=>{ noteFormOpen = false; render(); };
+    const noteTypePickerCancelBtn = document.getElementById('noteTypePickerCancelBtn');
+    if(noteTypePickerCancelBtn) noteTypePickerCancelBtn.onclick = ()=>{ noteFormOpen = false; render(); };
+    const noteTypePickerBackdrop = document.getElementById('noteTypePickerBackdrop');
+    if(noteTypePickerBackdrop) noteTypePickerBackdrop.onclick = (e)=>{
+      if(e.target === noteTypePickerBackdrop){ noteFormOpen = false; render(); }
+    };
+    document.querySelectorAll('[data-pick-note-type]').forEach(el=>{
+      el.onclick = async ()=>{
+        const type = el.dataset.pickNoteType;
+        const note = {id:uid(), type, title:'', updatedAt:new Date().toISOString()};
+        if(type==='text') note.body = '';
+        if(type==='bullet' || type==='checklist') note.items = [];
+        if(type==='reimbursement'){ note.items = []; note.status = 'menunggu'; }
+        state.notes.push(note);
+        noteFormOpen = false;
+        editNoteId = note.id;
+        render();
+        await persistSave('notes', note);
+      };
+    });
     const noteEditModalClose = document.getElementById('noteEditModalClose');
     if(noteEditModalClose) noteEditModalClose.onclick = ()=>{ noteFormOpen = false; editNoteId = null; render(); };
     const noteEditCancelBtn = document.getElementById('noteEditCancelBtn');
@@ -2244,19 +2401,17 @@
     };
     const saveNoteBtn = document.getElementById('saveNoteBtn');
     if(saveNoteBtn) saveNoteBtn.onclick = async ()=>{
+      const id = saveNoteBtn.dataset.noteId;
+      const note = state.notes.find(x=>x.id===id);
+      if(!note) return;
       const title = document.getElementById('nTitle').value.trim();
-      const body = document.getElementById('nBody').value;
-      if(!title && !body.trim()){ alert('Isi judul atau catatan dulu'); return; }
+      const bodyEl = document.getElementById('nBody');
+      if(bodyEl && !title && !bodyEl.value.trim()){ alert('Isi judul atau catatan dulu'); return; }
       if(saveNoteBtn.disabled) return;
       saveNoteBtn.disabled = true; saveNoteBtn.textContent = '... Menyimpan';
-      const existingId = saveNoteBtn.dataset.noteId;
-      const note = existingId
-        ? state.notes.find(x=>x.id===existingId)
-        : {id:uid()};
       note.title = title;
-      note.body = body;
+      if(bodyEl) note.body = bodyEl.value;
       note.updatedAt = new Date().toISOString();
-      if(!existingId) state.notes.push(note);
       noteFormOpen = false;
       editNoteId = null;
       await persistSave('notes', note);
@@ -2271,6 +2426,71 @@
       render();
       await persistDelete('notes', id);
     };
+    const nAddItemBtn = document.getElementById('nAddItemBtn');
+    if(nAddItemBtn) nAddItemBtn.onclick = async ()=>{
+      const id = nAddItemBtn.dataset.noteId;
+      const note = state.notes.find(x=>x.id===id);
+      const input = document.getElementById('nNewItem');
+      const text = input ? input.value.trim() : '';
+      if(!text) return;
+      if(!note.items) note.items = [];
+      note.items.push({id:uid(), text, checked:false});
+      note.updatedAt = new Date().toISOString();
+      render();
+      await persistSave('notes', note);
+    };
+    document.querySelectorAll('[data-toggle-note-item]').forEach(el=>{
+      el.onclick = async ()=>{
+        const noteId = el.dataset.toggleNoteItem;
+        const itemId = el.dataset.itemId;
+        const note = state.notes.find(x=>x.id===noteId);
+        if(!note || !note.items) return;
+        const item = note.items.find(x=>x.id===itemId);
+        if(!item) return;
+        item.checked = !item.checked;
+        note.updatedAt = new Date().toISOString();
+        render();
+        await persistSave('notes', note);
+      };
+    });
+    document.querySelectorAll('[data-del-note-item]').forEach(el=>{
+      el.onclick = async ()=>{
+        const noteId = el.dataset.delNoteItem;
+        const itemId = el.dataset.itemId;
+        const note = state.notes.find(x=>x.id===noteId);
+        if(!note || !note.items) return;
+        note.items = note.items.filter(x=>x.id!==itemId);
+        note.updatedAt = new Date().toISOString();
+        render();
+        await persistSave('notes', note);
+      };
+    });
+    const nAddReimBtn = document.getElementById('nAddReimBtn');
+    if(nAddReimBtn) nAddReimBtn.onclick = async ()=>{
+      const id = nAddReimBtn.dataset.noteId;
+      const note = state.notes.find(x=>x.id===id);
+      const date = document.getElementById('nReimDate').value || todayStr();
+      const amount = parseAmountInput('nReimAmount');
+      const desc = document.getElementById('nReimDesc').value.trim();
+      if(!desc || amount<=0){ alert('Isi keterangan dan nominal dulu'); return; }
+      if(!note.items) note.items = [];
+      note.items.push({id:uid(), date, amount, desc});
+      note.updatedAt = new Date().toISOString();
+      render();
+      await persistSave('notes', note);
+    };
+    document.querySelectorAll('[data-set-reimb-status]').forEach(el=>{
+      el.onclick = async ()=>{
+        const noteId = el.dataset.setReimbStatus;
+        const status = el.dataset.status;
+        const note = state.notes.find(x=>x.id===noteId);
+        if(!note) return;
+        note.status = status;
+        note.updatedAt = new Date().toISOString();
+        render();
+        await persistSave('notes', note);
+      };
+    });
 
     const openTxFormBtn = document.getElementById('openTxFormBtn');
     if(openTxFormBtn) openTxFormBtn.onclick = ()=>{
