@@ -210,13 +210,13 @@
   .note-type-badge.reimb{ background:rgba(200,164,90,0.2); color:var(--gold-dark); }
   .note-type-badge.checklist{ background:rgba(90,160,160,0.22); color:var(--teal); }
   .note-type-badge.bullet{ background:rgba(90,120,200,0.22); color:var(--blue); }
-  .note-type-pick-row{ display:grid; grid-template-columns:repeat(2,1fr); gap:9px; }
+  .note-type-pick-row{ display:grid; grid-template-columns:repeat(3,1fr); gap:9px; }
   .note-type-pick-btn{
     background:var(--paper-card-alt); border:1px solid rgba(255,255,255,0.22); border-radius:10px;
-    padding:16px 10px; text-align:center; cursor:pointer; color:var(--ink);
+    padding:16px 8px; text-align:center; cursor:pointer; color:var(--ink);
   }
-  .note-type-pick-btn .icon{ font-size:22px; display:block; margin-bottom:6px; }
-  .note-type-pick-btn .label{ font-size:12.5px; font-weight:600; }
+  .note-type-pick-btn .icon{ font-size:20px; display:block; margin-bottom:6px; }
+  .note-type-pick-btn .label{ font-size:11.5px; font-weight:600; }
   .note-item-row{ display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.08); }
   .note-item-row:last-child{ border-bottom:none; }
   .note-item-check{ width:19px; height:19px; flex:0 0 auto; border-radius:5px; border:1.5px solid var(--ink-soft); display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:12px; }
@@ -1332,15 +1332,25 @@
       if(!n.items) n.items = [];
       return n;
     }
-    // migrate legacy shapes into unified 'note' type
-    if(n.type==='bullet' || n.type==='checklist'){
-      n.items = (n.items||[]).map(it=>({id:it.id, text:it.text, checked: n.type==='checklist' ? !!it.checked : false, checkbox: n.type==='checklist'}));
-      n.body = n.body || '';
-      n.type = 'note';
+    if(n.type==='checklist'){
+      n.items = (n.items||[]).map(it=>({id:it.id, text:it.text, checked:!!it.checked, checkbox:true}));
+      return n;
+    }
+    if(n.type==='bullet'){
+      // legacy bullet-only note -> becomes a checklist
+      n.items = (n.items||[]).map(it=>({id:it.id, text:it.text, checked:false, checkbox:true}));
+      n.type = 'checklist';
+      return n;
+    }
+    // legacy/plain 'note' type
+    n.type = 'note';
+    if(!n.body) n.body = '';
+    if((n.items||[]).length>0){
+      // legacy note had mixed poin/checklist items -> convert whole note into a checklist
+      n.items = n.items.map(it=>({id:it.id, text:it.text, checked:!!it.checked, checkbox:true}));
+      n.type = 'checklist';
     } else {
-      n.type = 'note';
-      if(!n.body) n.body = '';
-      if(!n.items) n.items = [];
+      n.items = [];
     }
     return n;
   }
@@ -1351,6 +1361,7 @@
     html += '<div class="tx-modal-body" style="border-top:none;padding-top:0;">';
     html += '<div class="note-type-pick-row">';
     html += '<div class="note-type-pick-btn" data-pick-note-type="note"><span class="icon">📝</span><span class="label">Catatan</span></div>';
+    html += '<div class="note-type-pick-btn" data-pick-note-type="checklist"><span class="icon">☑️</span><span class="label">Checklist</span></div>';
     html += '<div class="note-type-pick-btn" data-pick-note-type="reimbursement"><span class="icon">🧾</span><span class="label">Reimbursement</span></div>';
     html += '</div>';
     html += '</div>';
@@ -1361,6 +1372,7 @@
 
   function noteTypeBadge(type){
     if(type==='reimbursement') return '<span class="note-type-badge reimb">Reimbursement</span>';
+    if(type==='checklist') return '<span class="note-type-badge checklist">Checklist</span>';
     return '';
   }
 
@@ -1375,20 +1387,14 @@
       }
       return 'Rp '+total.toLocaleString('id-ID')+' · '+items.length+' items';
     }
-    const items = n.items||[];
-    const parts = [];
-    const bodySnippet = (n.body||'').replace(/\n/g,' ').trim();
-    if(bodySnippet) parts.push(bodySnippet.slice(0,70)+(bodySnippet.length>70?'…':''));
-    if(items.length>0){
-      const checklistItems = items.filter(it=>it.checkbox);
-      if(checklistItems.length>0){
-        const done = checklistItems.filter(it=>it.checked).length;
-        parts.push(done+'/'+checklistItems.length+' selesai');
-      }
-      const bulletCount = items.length - checklistItems.length;
-      if(bulletCount>0) parts.push(bulletCount+' poin');
+    if(n.type==='checklist'){
+      const items = n.items||[];
+      if(items.length===0) return '';
+      const done = items.filter(it=>it.checked).length;
+      return done+'/'+items.length+' selesai';
     }
-    return parts.join(' · ');
+    const bodySnippet = (n.body||'').replace(/\n/g,' ').trim();
+    return bodySnippet.slice(0,70)+(bodySnippet.length>70?'…':'');
   }
 
   function renderNoteDetailPage(n){
@@ -1396,36 +1402,28 @@
     normalizeNote(n);
     const type = n.type;
     let html = '<div class="cat-detail-page" id="noteDetailPage">';
-    html += '<div class="cat-detail-header"><div style="flex:1;"><input id="nTitle" class="note-title-input" placeholder="Judul catatan" value="'+esc(n.title||'')+'">'+(type==='reimbursement'?'<div class="cat-detail-sub">'+noteTypeBadge(type)+'</div>':'')+'</div><button id="noteDetailClose" title="Tutup">✕</button></div>';
+    html += '<div class="cat-detail-header"><div style="flex:1;"><input id="nTitle" class="note-title-input" placeholder="Judul catatan" value="'+esc(n.title||'')+'">'+(type!=='note'?'<div class="cat-detail-sub">'+noteTypeBadge(type)+'</div>':'')+'</div><button id="noteDetailClose" title="Tutup">✕</button></div>';
 
     if(type==='note'){
       html += '<div class="ledger-sheet no-rule" style="margin-top:14px;">';
       html += '<textarea id="nBody" class="tx-add-notes" style="min-height:120px;" placeholder="Tulis catatan di sini...">'+esc(n.body||'')+'</textarea>';
       html += '</div>';
-
+    } else if(type==='checklist'){
       const items = n.items||[];
-      html += '<div class="ledger-sheet no-rule">';
-      html += '<h2>Poin & Checklist</h2>';
+      html += '<div class="ledger-sheet no-rule" style="margin-top:14px;">';
       if(items.length===0){
-        html += '<div class="empty-state" style="padding:10px 0;">Belum ada poin. Tambah di bawah.</div>';
+        html += '<div class="empty-state" style="padding:10px 0;">Belum ada item. Tambah di bawah.</div>';
       } else {
         items.forEach(it=>{
           html += '<div class="note-item-row">';
-          if(it.checkbox){
-            html += '<div class="note-item-check'+(it.checked?' checked':'')+'" data-toggle-note-item="'+n.id+'" data-item-id="'+it.id+'">'+(it.checked?'✓':'')+'</div>';
-          } else {
-            html += '<div class="note-item-dot"></div>';
-          }
-          html += '<div class="note-item-text'+(it.checked&&it.checkbox?' done':'')+'">'+esc(it.text)+'</div>';
+          html += '<div class="note-item-check'+(it.checked?' checked':'')+'" data-toggle-note-item="'+n.id+'" data-item-id="'+it.id+'">'+(it.checked?'✓':'')+'</div>';
+          html += '<div class="note-item-text'+(it.checked?' done':'')+'">'+esc(it.text)+'</div>';
           html += '<button class="tx-del" data-del-note-item="'+n.id+'" data-item-id="'+it.id+'" title="Hapus">✕</button>';
           html += '</div>';
         });
       }
-      html += '<div class="note-add-item-row"><input id="nNewItem" placeholder="Tulis poin..."></div>';
-      html += '<div style="display:flex;gap:8px;margin-top:8px;">';
-      html += '<button class="btn ghost small" id="nAddBulletBtn" data-note-id="'+n.id+'" style="flex:1;">• Tambah Poin</button>';
-      html += '<button class="btn ghost small" id="nAddChecklistBtn" data-note-id="'+n.id+'" style="flex:1;">☑ Tambah Checklist</button>';
-      html += '</div>';
+      html += '<div class="note-add-item-row"><input id="nNewItem" placeholder="Tulis item..."></div>';
+      html += '<button class="btn ghost small" id="nAddChecklistBtn" data-note-id="'+n.id+'" style="width:100%;margin-top:8px;">+ Tambah Item</button>';
       html += '</div>';
     } else if(type==='reimbursement'){
       const items = n.items||[];
@@ -2537,7 +2535,6 @@
         const type = el.dataset.pickNoteType;
         const note = {id:uid(), type, title:'', updatedAt:new Date().toISOString(), items:[]};
         if(type==='note') note.body = '';
-        if(type==='reimbursement') { /* status removed */ }
         state.notes.push(note);
         noteFormOpen = false;
         editNoteId = note.id;
@@ -2612,21 +2609,19 @@
         await persistDelete('notes', id);
       };
     });
-    function addNoteItem(noteId, checkbox){
+    function addNoteItem(noteId){
       const note = state.notes.find(x=>x.id===noteId);
       const input = document.getElementById('nNewItem');
       const text = input ? input.value.trim() : '';
       if(!note || !text) return;
       if(!note.items) note.items = [];
-      note.items.push({id:uid(), text, checked:false, checkbox});
+      note.items.push({id:uid(), text, checked:false, checkbox:true});
       note.updatedAt = new Date().toISOString();
       render();
       persistSave('notes', note);
     }
-    const nAddBulletBtn = document.getElementById('nAddBulletBtn');
-    if(nAddBulletBtn) nAddBulletBtn.onclick = ()=> addNoteItem(nAddBulletBtn.dataset.noteId, false);
     const nAddChecklistBtn = document.getElementById('nAddChecklistBtn');
-    if(nAddChecklistBtn) nAddChecklistBtn.onclick = ()=> addNoteItem(nAddChecklistBtn.dataset.noteId, true);
+    if(nAddChecklistBtn) nAddChecklistBtn.onclick = ()=> addNoteItem(nAddChecklistBtn.dataset.noteId);
     document.querySelectorAll('[data-toggle-note-item]').forEach(el=>{
       el.onclick = async ()=>{
         const noteId = el.dataset.toggleNoteItem;
