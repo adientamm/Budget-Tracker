@@ -525,6 +525,14 @@
     position:fixed; inset:0; z-index:390; background:var(--paper);
     overflow-y:auto; padding:0 14px calc(24px + env(safe-area-inset-bottom,0px));
   }
+  .cat-detail-page.note-detail-flex{ display:flex; flex-direction:column; overflow-y:hidden; padding-bottom:0; }
+  .cat-detail-page.has-bottom-bar{ padding-bottom:calc(88px + env(safe-area-inset-bottom,0px)); }
+  .cat-detail-page.note-detail-flex.has-bottom-bar{ padding-bottom:0; }
+  .note-body-full{
+    flex:1; width:100%; border:none; background:transparent; color:var(--ink);
+    font-family:'Nunito',sans-serif; font-size:15px; line-height:1.6; resize:none; outline:none;
+    padding:16px 0 calc(88px + env(safe-area-inset-bottom,0px));
+  }
   .cat-detail-header{
     display:flex; align-items:center; justify-content:space-between; gap:14px;
     position:sticky; top:0; background:var(--paper); z-index:5;
@@ -635,6 +643,7 @@
   let catFormOpen = false;
   let noteFormOpen = false;
   let editNoteId = null;
+  let noteFreshCreateId = null;
   let editTxId = null;
   let detailTxId = null;
   let editTxType = null;
@@ -1401,13 +1410,11 @@
     if(!n) return '';
     normalizeNote(n);
     const type = n.type;
-    let html = '<div class="cat-detail-page" id="noteDetailPage">';
+    let html = '<div class="cat-detail-page has-bottom-bar'+(type==='note'?' note-detail-flex':'')+'" id="noteDetailPage">';
     html += '<div class="cat-detail-header"><div style="flex:1;"><input id="nTitle" class="note-title-input" placeholder="Judul catatan" value="'+esc(n.title||'')+'">'+(type!=='note'?'<div class="cat-detail-sub">'+noteTypeBadge(type)+'</div>':'')+'</div><button id="noteDetailClose" title="Tutup">✕</button></div>';
 
     if(type==='note'){
-      html += '<div class="ledger-sheet no-rule" style="margin-top:14px;">';
-      html += '<textarea id="nBody" class="tx-add-notes" style="min-height:120px;" placeholder="Tulis catatan di sini...">'+esc(n.body||'')+'</textarea>';
-      html += '</div>';
+      html += '<textarea id="nBody" class="note-body-full" placeholder="Tulis catatan di sini...">'+esc(n.body||'')+'</textarea>';
     } else if(type==='checklist'){
       const items = n.items||[];
       html += '<div class="ledger-sheet no-rule" style="margin-top:14px;">';
@@ -1547,6 +1554,7 @@
     }
 
     html += '</div>';
+    html += '<div class="tx-add-bottom-actions"><button class="cancel-btn" id="noteBatalBtn">✕ BATAL</button><button class="save-btn" id="noteSimpanBtn">✓ SIMPAN</button></div>';
     return html;
   }
 
@@ -2519,7 +2527,9 @@
     document.querySelectorAll('[data-open-note]').forEach(el=>{
       el.onclick = (e)=>{
         if(e.target.closest('[data-note-menu],[data-del-note],.wallet-row-menu')) return;
-        editNoteId = el.dataset.openNote; editingReimItemId = null; draftReimCategory = null; draftReimEditCategory = null; render();
+        editNoteId = el.dataset.openNote; editingReimItemId = null; draftReimCategory = null; draftReimEditCategory = null;
+        noteFreshCreateId = null;
+        render();
       };
     });
     const noteTypePickerClose = document.getElementById('noteTypePickerClose');
@@ -2538,6 +2548,7 @@
         state.notes.push(note);
         noteFormOpen = false;
         editNoteId = note.id;
+        noteFreshCreateId = note.id;
         render();
         await persistSave('notes', note);
       };
@@ -2559,32 +2570,50 @@
       if(changed) note.updatedAt = new Date().toISOString();
       return changed ? note : null;
     }
-    async function closeNoteDetail(){
-      if(editNoteId){
-        const changed = commitNoteTextFields(editNoteId);
+    function isNoteEmpty(note){
+      if(!note) return true;
+      if((note.title||'').trim()) return false;
+      if(note.type==='note' && (note.body||'').trim()) return false;
+      if((note.items||[]).length>0) return false;
+      if(Number(note.deposit)||0) return false;
+      return true;
+    }
+    async function cancelNoteEdit(){
+      const id = editNoteId;
+      if(id && id===noteFreshCreateId){
+        const note = state.notes.find(x=>x.id===id);
+        if(isNoteEmpty(note)){
+          state.notes = state.notes.filter(x=>x.id!==id);
+          await persistDelete('notes', id);
+        }
+      }
+      editNoteId = null;
+      editingReimItemId = null;
+      draftReimCategory = null;
+      draftReimEditCategory = null;
+      noteFreshCreateId = null;
+      render();
+    }
+    async function saveNoteEdit(){
+      const id = editNoteId;
+      if(id){
+        const changed = commitNoteTextFields(id);
         if(changed) await persistSave('notes', changed);
       }
       editNoteId = null;
       editingReimItemId = null;
       draftReimCategory = null;
       draftReimEditCategory = null;
+      noteFreshCreateId = null;
       render();
     }
-    const nTitleEl = document.getElementById('nTitle');
-    if(nTitleEl) nTitleEl.onblur = async ()=>{
-      const changed = commitNoteTextFields(editNoteId);
-      if(changed) await persistSave('notes', changed);
-    };
-    const nBodyEl = document.getElementById('nBody');
-    if(nBodyEl) nBodyEl.onblur = async ()=>{
-      const changed = commitNoteTextFields(editNoteId);
-      if(changed) await persistSave('notes', changed);
-    };
-    const nDepositEl = document.getElementById('nDeposit');
-    if(nDepositEl) nDepositEl.onblur = async ()=>{
-      const changed = commitNoteTextFields(editNoteId);
-      if(changed){ await persistSave('notes', changed); render(); }
-    };
+    async function closeNoteDetail(){
+      await cancelNoteEdit();
+    }
+    const noteBatalBtn = document.getElementById('noteBatalBtn');
+    if(noteBatalBtn) noteBatalBtn.onclick = cancelNoteEdit;
+    const noteSimpanBtn = document.getElementById('noteSimpanBtn');
+    if(noteSimpanBtn) noteSimpanBtn.onclick = saveNoteEdit;
     const reimSortSelect = document.getElementById('reimSortSelect');
     if(reimSortSelect) reimSortSelect.onchange = ()=>{ reimSortMode = reimSortSelect.value; render(); };
     document.querySelectorAll('[data-toggle-reim-cat-group]').forEach(el=>{
