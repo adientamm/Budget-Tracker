@@ -519,7 +519,9 @@
   }
   .tx-add-bottom-actions button, .tx-modal-actions .cancel-btn, .tx-modal-actions .save-btn{ flex:1; padding:13px 0; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; }
   .cancel-btn{ background:var(--red); border:none; color:#fff; }
-  .save-btn{ background:var(--gold-dark); border:none; color:#1a1a1a; }
+  .cancel-btn:hover{ background:#B85850; }
+  .save-btn{ background:var(--teal-dark); border:none; color:#fff; }
+  .save-btn:hover{ background:var(--teal); }
 
   .cat-detail-page{
     position:fixed; inset:0; z-index:390; background:var(--paper);
@@ -1315,7 +1317,7 @@
       '<label style="text-transform:none;font-size:13px;">Sertakan di Total Saldo Semua Dompet</label></div>';
     html += '</div>';
     html += '</div>';
-    html += '<div class="tx-modal-actions"><button class="cancel-btn" id="walletAddCancelBtn">✕ BATAL</button><button class="save-btn" id="addWalletBtn">✓ SIMPAN</button></div>';
+    html += '<div class="tx-modal-actions"><button class="cancel-btn" id="walletAddCancelBtn">Batal</button><button class="save-btn" id="addWalletBtn">Simpan</button></div>';
     html += '</div></div>';
     return html;
   }
@@ -1331,7 +1333,7 @@
       '<input type="checkbox" id="ewIncludeTotal" '+(w.includeInTotal!==false?'checked':'')+' style="width:auto;">'+
       '<label style="text-transform:none;font-size:13px;">Sertakan di Total Saldo Semua Dompet</label></div>';
     html += '</div>';
-    html += '<div class="tx-modal-actions"><button class="cancel-btn" id="walletEditCancelBtn">✕ BATAL</button><button class="save-btn" data-save-wallet="'+w.id+'">✓ SIMPAN</button></div>';
+    html += '<div class="tx-modal-actions"><button class="cancel-btn" id="walletEditCancelBtn">Batal</button><button class="save-btn" data-save-wallet="'+w.id+'">Simpan</button></div>';
     html += '</div></div>';
     return html;
   }
@@ -1374,7 +1376,7 @@
     html += '<div class="note-type-pick-btn" data-pick-note-type="reimbursement"><span class="icon">🧾</span><span class="label">Reimbursement</span></div>';
     html += '</div>';
     html += '</div>';
-    html += '<div class="tx-modal-actions"><button class="cancel-btn" id="noteTypePickerCancelBtn">✕ CANCEL</button></div>';
+    html += '<div class="tx-modal-actions"><button class="cancel-btn" id="noteTypePickerCancelBtn">Cancel</button></div>';
     html += '</div></div>';
     return html;
   }
@@ -1554,7 +1556,7 @@
     }
 
     html += '</div>';
-    html += '<div class="tx-add-bottom-actions"><button class="cancel-btn" id="noteBatalBtn">✕ CANCEL</button><button class="save-btn" id="noteSimpanBtn">✓ SAVE</button></div>';
+    html += '<div class="tx-add-bottom-actions"><button class="cancel-btn" id="noteBatalBtn">Cancel</button><button class="save-btn" id="noteSimpanBtn">Save</button></div>';
     return html;
   }
 
@@ -1615,7 +1617,7 @@
     html += field('Budget Bulan Ini', '<input id="cBudget" type="text" inputmode="numeric" placeholder="0">', 'span2');
     html += '</div>';
     html += '</div>';
-    html += '<div class="tx-modal-actions"><button class="cancel-btn" id="catAddCancelBtn">✕ BATAL</button><button class="save-btn" id="addCatBtn">✓ SIMPAN</button></div>';
+    html += '<div class="tx-modal-actions"><button class="cancel-btn" id="catAddCancelBtn">Batal</button><button class="save-btn" id="addCatBtn">Simpan</button></div>';
     html += '</div></div>';
     return html;
   }
@@ -1629,7 +1631,7 @@
     html += '<div class="field span2" style="font-size:11.5px;color:var(--ink-soft);text-transform:none;">Nominal budget diatur lewat tombol "Edit Budget" di menu kategori, per bulan.</div>';
     html += '<div class="field span2" style="margin-top:6px;"><button type="button" class="btn danger small" id="delCatFullyBtn" data-cat-id="'+c.id+'">🗑 Hapus Kategori (dari semua bulan)</button></div>';
     html += '</div>';
-    html += '<div class="tx-modal-actions"><button class="cancel-btn" id="catEditCancelBtn">✕ BATAL</button><button class="save-btn" data-save-cat="'+c.id+'">✓ SIMPAN</button></div>';
+    html += '<div class="tx-modal-actions"><button class="cancel-btn" id="catEditCancelBtn">Batal</button><button class="save-btn" data-save-cat="'+c.id+'">Simpan</button></div>';
     html += '</div></div>';
     return html;
   }
@@ -1654,7 +1656,7 @@
     html += '</div>';
     html += '<div class="tx-modal-actions">'+
       (hasOverride ? '<button class="btn ghost small" id="mbResetBtn" data-cat-id="'+c.id+'" style="flex:0 0 auto;padding:13px 14px;">Hapus Budget</button>' : '')+
-      '<button class="cancel-btn" id="monthBudgetCancelBtn">✕ BATAL</button><button class="save-btn" id="mbSaveBtn" data-cat-id="'+c.id+'">✓ SIMPAN</button></div>';
+      '<button class="cancel-btn" id="monthBudgetCancelBtn">Batal</button><button class="save-btn" id="mbSaveBtn" data-cat-id="'+c.id+'">Simpan</button></div>';
     html += '</div></div>';
     return html;
   }
@@ -1727,7 +1729,7 @@
       html += '</div>';
     }
     html += '</div>';
-    html += '<div class="tx-modal-actions"><button class="cancel-btn" id="addExistingCatCancelBtn">✕ TUTUP</button></div>';
+    html += '<div class="tx-modal-actions"><button class="cancel-btn" id="addExistingCatCancelBtn">Tutup</button></div>';
     html += '</div></div>';
     return html;
   }
@@ -1816,7 +1818,7 @@
 
     html += '</div>';
 
-    html += '<div class="tx-add-bottom-actions"><button class="cancel-btn" id="txCancelBtn">✕ BATAL</button><button class="save-btn" id="addTxBtn">✓ SIMPAN</button></div>';
+    html += '<div class="tx-add-bottom-actions"><button class="cancel-btn" id="txCancelBtn">Batal</button><button class="save-btn" id="addTxBtn">Simpan</button></div>';
 
     return html;
   }
@@ -1930,7 +1932,7 @@
     html += field('Catatan', '<input id="etNote" value="'+esc(t.note||'')+'">', 'span2');
     html += '</div>';
     html += '</div>';
-    html += '<div class="tx-modal-actions"><button class="cancel-btn" id="txEditCancelBtn">✕ BATAL</button><button class="save-btn" data-save-tx="'+t.id+'">✓ SIMPAN</button></div>';
+    html += '<div class="tx-modal-actions"><button class="cancel-btn" id="txEditCancelBtn">Batal</button><button class="save-btn" data-save-tx="'+t.id+'">Simpan</button></div>';
     html += '</div></div>';
     return html;
   }
@@ -2849,7 +2851,7 @@
       const tx = {id:uid(), type:txTypeDraft, amount, date, time, walletId, note};
       if(txTypeDraft==='transfer'){
         tx.toWalletId = txToWalletDraft || walletId;
-        if(tx.toWalletId===walletId){ alert('Dompet asal dan tujuan tidak boleh sama'); addTxBtn.disabled=false; addTxBtn.textContent='✓ SIMPAN'; return; }
+        if(tx.toWalletId===walletId){ alert('Dompet asal dan tujuan tidak boleh sama'); addTxBtn.disabled=false; addTxBtn.textContent='Simpan'; return; }
       }
       if(txTypeDraft==='expense'){
         tx.categoryId = txCategoryDraft || null;
@@ -2913,9 +2915,9 @@
         t.note = document.getElementById('etNote').value.trim();
         if(editTxType==='transfer'){
           const toWalletVal = document.getElementById('etToWallet').value;
-          if(!toWalletVal){ alert('Pilih dompet tujuan dulu (dompet lama sudah dihapus)'); b.disabled=false; b.textContent='✓ SIMPAN'; return; }
+          if(!toWalletVal){ alert('Pilih dompet tujuan dulu (dompet lama sudah dihapus)'); b.disabled=false; b.textContent='Simpan'; return; }
           t.toWalletId = toWalletVal;
-          if(t.toWalletId===t.walletId){ alert('Dompet asal dan tujuan tidak boleh sama'); b.disabled=false; b.textContent='✓ SIMPAN'; return; }
+          if(t.toWalletId===t.walletId){ alert('Dompet asal dan tujuan tidak boleh sama'); b.disabled=false; b.textContent='Simpan'; return; }
           delete t.categoryId;
         } else if(editTxType==='expense'){
           t.categoryId = document.getElementById('etCategory').value || null;
