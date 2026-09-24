@@ -465,10 +465,10 @@
     position:fixed; inset:0; z-index:400; background:var(--paper);
     display:flex; flex-direction:column; overflow:hidden;
     height:100dvh;
-    padding:14px 14px calc(96px + env(safe-area-inset-bottom,0px));
+    padding:10px 14px calc(96px + env(safe-area-inset-bottom,0px));
   }
   .tx-add-type-toggle{
-    display:flex; justify-content:center; gap:14px; margin:6px 0 18px; flex-shrink:0;
+    display:flex; justify-content:center; gap:14px; margin:4px 0 10px; flex-shrink:0;
   }
   .tx-add-type-toggle button{
     background:none; border:none; color:var(--ink-soft); font-size:13px; font-weight:700;
@@ -477,9 +477,9 @@
   .tx-add-type-toggle button.active{ color:var(--gold); }
   .tx-add-type-toggle .dot{ width:16px; height:16px; border-radius:50%; border:1.5px solid var(--ink-soft); display:inline-flex; align-items:center; justify-content:center; font-size:10px; }
   .tx-add-type-toggle button.active .dot{ background:var(--gold); border-color:var(--gold); color:#1a1a1a; }
-  .tx-add-picker-row{ display:flex; gap:10px; margin-bottom:10px; flex-shrink:0; }
+  .tx-add-picker-row{ display:flex; gap:10px; margin-bottom:6px; flex-shrink:0; }
   .tx-add-picker-row .field-mini{ flex:1; }
-  .tx-add-picker-row label{ display:block; font-size:11px; color:var(--ink-soft); margin-bottom:6px; text-align:center; }
+  .tx-add-picker-row label{ display:block; font-size:11px; color:var(--ink-soft); margin-bottom:4px; text-align:center; }
   select.tx-add-picker{
     -webkit-appearance:none; appearance:none;
     width:100%; background:var(--paper-card); color:var(--ink);
@@ -488,10 +488,10 @@
     font-family:inherit;
   }
   .tx-add-notes{
-    width:100%; min-height:0; flex:1; background:var(--paper-card);
+    width:100%; height:44px; flex:none; background:var(--paper-card);
     border:1px solid rgba(255,255,255,0.15); border-radius:10px;
     color:var(--ink); font-size:14px; padding:10px 12px; font-family:inherit;
-    resize:none; margin-bottom:10px; overflow-y:auto;
+    resize:none; margin-bottom:6px; overflow-y:auto; flex-shrink:0;
   }
   .tx-add-notes::placeholder{ color:var(--ink-soft); }
   .tx-add-amount-box{
@@ -505,7 +505,7 @@
   .tx-add-amount-box button{
     background:none; border:none; color:var(--ink-soft); font-size:20px; cursor:pointer; flex-shrink:0;
   }
-  .tx-numpad{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; flex-shrink:0; }
+  .tx-numpad{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:10px; flex-shrink:0; }
   .tx-numpad button{
     background:var(--paper-card); border:1px solid rgba(255,255,255,0.1);
     color:var(--ink); font-size:19px; font-weight:600; border-radius:10px;
@@ -515,7 +515,7 @@
   .tx-numpad button.calc-op{ background:var(--paper-card-alt); color:var(--gold); font-weight:700; }
   .tx-numpad button.calc-op.active{ background:var(--gold-dark); color:#1a1a1a; }
   .tx-numpad button.calc-eq{ background:var(--gold-dark); color:#1a1a1a; border:none; font-weight:700; }
-  .tx-add-date-row{ display:flex; gap:10px; margin-bottom:6px; flex-shrink:0; }
+  .tx-add-date-row{ display:flex; gap:10px; margin-bottom:0; flex-shrink:0; }
   .tx-add-date-row .field-mini{ flex:1; }
   .tx-add-bottom-actions{
     position:fixed; left:0; right:0; bottom:0; z-index:410;
@@ -554,7 +554,7 @@
   .form-modal-header{
     display:flex; align-items:center; justify-content:space-between; gap:14px;
     position:sticky; top:0; background:var(--paper); z-index:5; flex-shrink:0;
-    padding:16px 0 12px; margin:0 0 14px; border-bottom:1px solid rgba(255,255,255,0.08);
+    padding:8px 0 8px; margin:0 0 6px; border-bottom:1px solid rgba(255,255,255,0.08);
   }
   .form-modal-header .title{ font-size:16px; font-weight:700; }
   .form-modal-header button{
