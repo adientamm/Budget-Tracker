@@ -422,13 +422,11 @@
     border-radius:50%; font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center;
   }
   .tx-modal-close:active{ background:rgba(255,255,255,0.08); }
-  .tx-modal-top-actions{ display:flex; gap:4px; }
-  .tx-modal-icon-btn{
-    background:none; border:none; color:var(--ink-soft); width:34px; height:34px;
-    border-radius:50%; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center;
-  }
-  .tx-modal-icon-btn:active{ background:rgba(255,255,255,0.08); }
-  .tx-modal-icon-btn.danger{ color:var(--red); }
+  .tx-modal-top-actions{ display:flex; gap:6px; }
+  .tx-del[data-edit-tx-modal]{ background:var(--teal-dark); color:#fff; }
+  .tx-del[data-edit-tx-modal]:hover{ background:var(--teal); }
+  .tx-del[data-del-tx-modal]{ background:var(--red); color:#fff; }
+  .tx-del[data-del-tx-modal]:hover{ background:#B85850; }
   .tx-modal-head{ padding:0 22px 18px; text-align:center; }
   .tx-modal-icon{
     width:52px; height:52px; border-radius:50%; margin:0 auto 12px;
@@ -1837,7 +1835,7 @@
     const dateFull = new Date(t.date+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'}) + (t.time ? ', '+t.time : '');
     let html = '<div class="tx-modal-backdrop" id="txModalBackdrop">';
     html += '<div class="tx-modal">';
-    html += '<div class="tx-modal-top"><button class="tx-modal-close" id="txModalClose" title="Close">✕</button><div class="tx-modal-top-actions"><button class="tx-modal-icon-btn danger" data-del-tx-modal="'+t.id+'" title="Delete">🗑</button><button class="tx-modal-icon-btn" data-edit-tx-modal="'+t.id+'" title="Edit">✎</button></div></div>';
+    html += '<div class="tx-modal-top"><button class="tx-modal-close" id="txModalClose" title="Close">✕</button><div class="tx-modal-top-actions"><button class="tx-del" data-edit-tx-modal="'+t.id+'" title="Edit">✎</button><button class="tx-del" data-del-tx-modal="'+t.id+'" title="Delete">✕</button></div></div>';
     html += '<div class="tx-modal-head">';
     html += '<div class="tx-modal-icon '+t.type+'">'+txIcon(t)+'</div>';
     html += '<div class="tx-modal-title">'+esc(title)+'</div>';
