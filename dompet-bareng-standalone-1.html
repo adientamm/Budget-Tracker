@@ -465,57 +465,57 @@
     position:fixed; inset:0; z-index:400; background:var(--paper);
     display:flex; flex-direction:column; overflow-y:auto;
     height:100dvh;
-    padding:10px 14px calc(96px + env(safe-area-inset-bottom,0px));
+    padding:14px 14px calc(96px + env(safe-area-inset-bottom,0px));
   }
   .tx-add-type-toggle{
-    display:flex; justify-content:center; gap:14px; margin:2px 0 10px;
+    display:flex; justify-content:center; gap:14px; margin:6px 0 18px;
   }
   .tx-add-type-toggle button{
     background:none; border:none; color:var(--ink-soft); font-size:13px; font-weight:700;
-    letter-spacing:0.5px; padding:4px 4px; cursor:pointer; display:flex; align-items:center; gap:6px;
+    letter-spacing:0.5px; padding:6px 4px; cursor:pointer; display:flex; align-items:center; gap:6px;
   }
   .tx-add-type-toggle button.active{ color:var(--gold); }
   .tx-add-type-toggle .dot{ width:16px; height:16px; border-radius:50%; border:1.5px solid var(--ink-soft); display:inline-flex; align-items:center; justify-content:center; font-size:10px; }
   .tx-add-type-toggle button.active .dot{ background:var(--gold); border-color:var(--gold); color:#1a1a1a; }
-  .tx-add-picker-row{ display:flex; gap:10px; margin-bottom:8px; }
+  .tx-add-picker-row{ display:flex; gap:10px; margin-bottom:10px; }
   .tx-add-picker-row .field-mini{ flex:1; }
-  .tx-add-picker-row label{ display:block; font-size:11px; color:var(--ink-soft); margin-bottom:4px; text-align:center; }
+  .tx-add-picker-row label{ display:block; font-size:11px; color:var(--ink-soft); margin-bottom:6px; text-align:center; }
   select.tx-add-picker{
     -webkit-appearance:none; appearance:none;
     width:100%; background:var(--paper-card); color:var(--ink);
     border:1px solid rgba(255,255,255,0.15); border-radius:10px;
-    padding:9px 10px; font-size:14px; font-weight:600; text-align:center;
+    padding:12px 10px; font-size:14px; font-weight:600; text-align:center;
     font-family:inherit;
   }
   .tx-add-notes{
-    width:100%; min-height:34px; background:var(--paper-card);
+    width:100%; min-height:42px; flex:1; background:var(--paper-card);
     border:1px solid rgba(255,255,255,0.15); border-radius:10px;
-    color:var(--ink); font-size:14px; padding:8px 12px; font-family:inherit;
-    resize:vertical; margin-bottom:8px;
+    color:var(--ink); font-size:14px; padding:10px 12px; font-family:inherit;
+    resize:none; margin-bottom:10px;
   }
   .tx-add-notes::placeholder{ color:var(--ink-soft); }
   .tx-add-amount-box{
     display:flex; align-items:center; justify-content:flex-end; gap:10px;
     background:var(--paper-card); border:1px solid rgba(255,255,255,0.15);
-    border-radius:10px; padding:10px 16px; margin-bottom:8px; min-height:50px;
+    border-radius:10px; padding:16px 18px; margin-bottom:10px; min-height:70px;
   }
   .tx-add-amount-box .amt-wrap{ flex:1; text-align:right; }
   .tx-add-amount-box .amt-expr{ font-family:'Nunito',sans-serif; font-variant-numeric:tabular-nums; font-size:13px; color:var(--ink-soft); min-height:16px; }
-  .tx-add-amount-box .amt{ font-family:'Nunito',sans-serif; font-variant-numeric:tabular-nums; font-size:28px; font-weight:700; color:var(--gold); word-break:break-all; }
+  .tx-add-amount-box .amt{ font-family:'Nunito',sans-serif; font-variant-numeric:tabular-nums; font-size:32px; font-weight:700; color:var(--gold); word-break:break-all; }
   .tx-add-amount-box button{
     background:none; border:none; color:var(--ink-soft); font-size:20px; cursor:pointer; flex-shrink:0;
   }
-  .tx-numpad{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:8px; }
+  .tx-numpad{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; flex-shrink:0; }
   .tx-numpad button{
     background:var(--paper-card); border:1px solid rgba(255,255,255,0.1);
-    color:var(--ink); font-size:18px; font-weight:600; border-radius:10px;
-    padding:10px 0; cursor:pointer; font-family:'Nunito',sans-serif; font-variant-numeric:tabular-nums;
+    color:var(--ink); font-size:19px; font-weight:600; border-radius:10px;
+    padding:15px 0; cursor:pointer; font-family:'Nunito',sans-serif; font-variant-numeric:tabular-nums;
   }
   .tx-numpad button:active{ background:rgba(255,255,255,0.08); }
   .tx-numpad button.calc-op{ background:var(--paper-card-alt); color:var(--gold); font-weight:700; }
   .tx-numpad button.calc-op.active{ background:var(--gold-dark); color:#1a1a1a; }
   .tx-numpad button.calc-eq{ background:var(--gold-dark); color:#1a1a1a; border:none; font-weight:700; }
-  .tx-add-date-row{ display:flex; gap:10px; margin-bottom:2px; }
+  .tx-add-date-row{ display:flex; gap:10px; margin-bottom:6px; flex-shrink:0; }
   .tx-add-date-row .field-mini{ flex:1; }
   .tx-add-bottom-actions{
     position:fixed; left:0; right:0; bottom:0; z-index:410;
@@ -554,7 +554,7 @@
   .form-modal-header{
     display:flex; align-items:center; justify-content:space-between; gap:14px;
     position:sticky; top:0; background:var(--paper); z-index:5;
-    padding:6px 0 8px; margin:0 0 6px; border-bottom:1px solid rgba(255,255,255,0.08);
+    padding:16px 0 12px; margin:0 0 14px; border-bottom:1px solid rgba(255,255,255,0.08);
   }
   .form-modal-header .title{ font-size:16px; font-weight:700; }
   .form-modal-header button{
