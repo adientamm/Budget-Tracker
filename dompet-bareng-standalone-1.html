@@ -276,6 +276,17 @@
   .bar-fill{ height:100%; background:var(--green); border-radius:5px; transition:width .3s ease; }
   .bar-fill.over{ background:var(--red); }
   .bar-fill.warn{ background:var(--gold); }
+  .trend-chart{ display:flex; align-items:flex-end; gap:6px; height:140px; margin-top:6px; }
+  .trend-col{ flex:1; display:flex; flex-direction:column; align-items:center; height:100%; }
+  .trend-bars{ flex:1; width:100%; display:flex; align-items:flex-end; justify-content:center; gap:3px; }
+  .trend-bar{ width:38%; border-radius:3px 3px 0 0; min-height:2px; }
+  .trend-bar.income{ background:var(--green); }
+  .trend-bar.expense{ background:var(--red); }
+  .trend-label{ font-size:10px; color:var(--ink-soft); margin-top:6px; text-align:center; }
+  .trend-legend{ display:flex; gap:16px; justify-content:center; margin-top:12px; font-size:12px; color:var(--ink-soft); }
+  .trend-legend .dot{ display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; vertical-align:middle; }
+  .trend-legend .dot.income{ background:var(--green); }
+  .trend-legend .dot.expense{ background:var(--red); }
 
   button{ cursor:pointer; }
   .btn{
@@ -657,6 +668,7 @@
   let expandedCatId = null;
   let expandedWalletId = null;
   let selectedMonth = null; // diisi 'YYYY-MM', null berarti bulan berjalan
+  let analysisWalletFilter = '';
 
   function getSelectedMonth(){ return selectedMonth || todayStr().slice(0,7); }
   function shiftMonth(delta){
@@ -1070,6 +1082,35 @@
     }
     return 0;
   }
+  function monthTotalsFiltered(m, walletId){
+    let income=0, expense=0;
+    state.transactions.forEach(t=>{
+      if(monthKey(t.date)!==m) return;
+      if(walletId && t.walletId!==walletId) return;
+      if(t.type==='income') income += Number(t.amount);
+      if(t.type==='expense') expense += Number(t.amount);
+    });
+    return {income, expense};
+  }
+  function categorySpentFiltered(catId, m, walletId){
+    return state.transactions.reduce((s,t)=>{
+      if(t.type==='expense' && t.categoryId===catId && monthKey(t.date)===m){
+        if(walletId && t.walletId!==walletId) return s;
+        return s + Number(t.amount);
+      }
+      return s;
+    },0);
+  }
+  function last6MonthKeys(m){
+    const [y,mo] = m.split('-').map(Number);
+    const arr = [];
+    for(let i=5;i>=0;i--){
+      let yy=y, mm=mo-i;
+      while(mm<1){ mm+=12; yy--; }
+      arr.push(yy+'-'+String(mm).padStart(2,'0'));
+    }
+    return arr;
+  }
   function previousCategoryBudget(c, m){
     if(c.budgetOverrides){
       const keys = Object.keys(c.budgetOverrides).filter(k=>k<m).sort();
@@ -1184,6 +1225,7 @@
     if(t==='wallets') return '<svg '+common+'><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M16 5H7a2 2 0 0 0-2 2"/><circle cx="17" cy="13" r="1" fill="currentColor" stroke="none"/></svg>';
     if(t==='categories') return '<svg '+common+'><path d="m20.59 13.41-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1" fill="currentColor" stroke="none"/></svg>';
     if(t==='notes') return '<svg '+common+'><path d="M14 3v5h5"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>';
+    if(t==='analysis') return '<svg '+common+'><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>';
     return '<svg '+common+'><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/></svg>';
   }
 
@@ -1200,8 +1242,8 @@
   }
 
   function renderTabButtons(){
-    return ['dashboard','transactions','categories','wallets','notes'].map(t=>{
-      const label = t==='dashboard'?'Ringkasan':t==='wallets'?'Dompet':t==='categories'?'Budget':t==='notes'?'Catatan':'Transaksi';
+    return ['dashboard','transactions','categories','analysis','wallets','notes'].map(t=>{
+      const label = t==='dashboard'?'Ringkasan':t==='wallets'?'Dompet':t==='categories'?'Budget':t==='notes'?'Catatan':t==='analysis'?'Analisis':'Transaksi';
       return '<button class="tab-btn'+(currentTab===t?' active':'')+'" data-tab="'+t+'">'+tabIconSvg(t)+label+'</button>';
     }).join('');
   }
@@ -1301,6 +1343,95 @@
         html += '<span class="cat-figures mono"><b>'+fmt(spent)+'</b> / '+fmt(budget)+'</span></div>';
         html += '<div class="bar-track"><div class="bar-fill '+(over?'over':warn?'warn':'')+'" style="width:'+pct+'%"></div></div>';
         html += '<div style="margin-top:6px;font-size:12.5px;color:var(--ink-soft);">Sisa: <span class="mono" style="font-weight:600;color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span> <span style="float:right;">▸ Lihat transaksi</span></div>';
+        html += '</div>';
+      });
+    }
+    html += '</div>';
+
+    return html;
+  }
+
+  function renderAnalysis(){
+    const m = getSelectedMonth();
+    const wf = analysisWalletFilter || null;
+    const {income, expense} = monthTotalsFiltered(m, wf);
+    let html = '';
+
+    // Ringkasan
+    html += '<div class="ledger-sheet"><h2>Ringkasan '+monthLabel(m)+'</h2>';
+    html += '<div class="quick-stats">';
+    html += '<div class="quick-stat">Pemasukan<br><span class="val income mono">'+fmt(income)+'</span></div>';
+    html += '<div class="quick-stat">Pengeluaran<br><span class="val expense mono">'+fmt(expense)+'</span></div>';
+    html += '<div class="quick-stat">Selisih<br><span class="val mono" style="color:'+((income-expense)<0?'var(--red)':'var(--green)')+'">'+fmt(income-expense)+'</span></div>';
+    html += '</div></div>';
+
+    // Tren 6 bulan
+    html += '<div class="ledger-sheet no-rule"><h2>Tren 6 Bulan Terakhir</h2>';
+    const months = last6MonthKeys(m);
+    const monthData = months.map(mm=>monthTotalsFiltered(mm, wf));
+    const maxVal = Math.max(1, ...monthData.map(d=>Math.max(d.income, d.expense)));
+    html += '<div class="trend-chart">';
+    months.forEach((mm,i)=>{
+      const d = monthData[i];
+      const incH = Math.max(2, (d.income/maxVal)*100);
+      const expH = Math.max(2, (d.expense/maxVal)*100);
+      html += '<div class="trend-col" title="'+monthLabelShort(mm)+'">';
+      html += '<div class="trend-bars"><div class="trend-bar income" style="height:'+incH+'%"></div><div class="trend-bar expense" style="height:'+expH+'%"></div></div>';
+      html += '<div class="trend-label">'+monthLabelShort(mm)+'</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    html += '<div class="trend-legend"><span><i class="dot income"></i> Pemasukan</span><span><i class="dot expense"></i> Pengeluaran</span></div>';
+    html += '</div>';
+
+    // Pengeluaran per kategori
+    html += '<div class="ledger-sheet no-rule"><h2>Pengeluaran per Kategori — '+monthLabel(m)+'</h2>';
+    const catSpends = state.categories.map(c=>({c, spent:categorySpentFiltered(c.id, m, wf)})).filter(x=>x.spent>0);
+    const noCatSpent = state.transactions.reduce((s,t)=>{
+      if(t.type==='expense' && !t.categoryId && monthKey(t.date)===m){
+        if(wf && t.walletId!==wf) return s;
+        return s + Number(t.amount);
+      }
+      return s;
+    },0);
+    const totalExpenseForPct = catSpends.reduce((s,x)=>s+x.spent,0) + noCatSpent;
+    if(totalExpenseForPct===0){
+      html += '<div class="empty-state">Belum ada pengeluaran bulan ini.</div>';
+    } else {
+      catSpends.sort((a,b)=>b.spent-a.spent).forEach(x=>{
+        const pct = totalExpenseForPct>0 ? (x.spent/totalExpenseForPct)*100 : 0;
+        html += '<div class="cat-row"><div class="cat-top"><span class="cat-name"><span class="cat-icon-badge">'+categoryIconFor(x.c)+'</span>'+esc(x.c.name)+'</span>';
+        html += '<span class="cat-figures mono"><b>'+fmt(x.spent)+'</b> ('+pct.toFixed(0)+'%)</span></div>';
+        html += '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%"></div></div>';
+        html += '</div>';
+      });
+      if(noCatSpent>0){
+        const pct = (noCatSpent/totalExpenseForPct)*100;
+        html += '<div class="cat-row"><div class="cat-top"><span class="cat-name">🏷️ Tanpa Kategori</span>';
+        html += '<span class="cat-figures mono"><b>'+fmt(noCatSpent)+'</b> ('+pct.toFixed(0)+'%)</span></div>';
+        html += '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:var(--ink-soft);"></div></div>';
+        html += '</div>';
+      }
+    }
+    html += '</div>';
+
+    // Budget vs Realisasi
+    html += '<div class="ledger-sheet no-rule"><h2>Budget vs Realisasi — '+monthLabel(m)+'</h2>';
+    const budgetedCats = state.categories.filter(c=>c.budgetOverrides && Object.prototype.hasOwnProperty.call(c.budgetOverrides, m));
+    if(budgetedCats.length===0){
+      html += '<div class="empty-state">Belum ada budget yang diatur bulan ini. Atur di tab Budget.</div>';
+    } else {
+      budgetedCats.slice().sort((a,b)=>getCategoryBudget(b,m)-getCategoryBudget(a,m)).forEach(c=>{
+        const spent = categorySpentFiltered(c.id, m, wf);
+        const budget = getCategoryBudget(c, m);
+        const sisa = budget - spent;
+        const pct = budget>0 ? Math.min(100, (spent/budget)*100) : 0;
+        const over = budget>0 && spent>budget;
+        const warn = !over && budget>0 && spent/budget>=0.8;
+        html += '<div class="cat-row"><div class="cat-top"><span class="cat-name"><span class="cat-icon-badge">'+categoryIconFor(c)+'</span>'+esc(c.name)+'</span>';
+        html += '<span class="cat-figures mono"><b>'+fmt(spent)+'</b> / '+fmt(budget)+'</span></div>';
+        html += '<div class="bar-track"><div class="bar-fill '+(over?'over':warn?'warn':'')+'" style="width:'+pct+'%"></div></div>';
+        html += '<div style="margin-top:6px;font-size:12.5px;color:var(--ink-soft);">Sisa: <span class="mono" style="font-weight:600;color:'+(sisa<0?'var(--red)':'var(--green)')+'">'+fmt(sisa)+'</span></div>';
         html += '</div>';
       });
     }
@@ -2002,6 +2133,16 @@
       }
       html += '</div>';
     }
+    if(!showCodePanel && currentTab==='analysis'){
+      html += '<div class="sticky-top-inner">'+monthNavBar();
+      html += '<select id="analysisWalletFilter" style="margin-top:8px;">';
+      html += '<option value=""'+(analysisWalletFilter===''?' selected':'')+'>Semua Dompet</option>';
+      sortedWallets().forEach(w=>{
+        html += '<option value="'+w.id+'"'+(analysisWalletFilter===w.id?' selected':'')+'>'+esc(w.name)+'</option>';
+      });
+      html += '</select>';
+      html += '</div>';
+    }
     if(!showCodePanel && currentTab==='wallets'){
       html += '<div class="sticky-top-inner"><button class="btn gold full" id="openWalletFormBtn">+ Tambah Dompet</button></div>';
     }
@@ -2025,6 +2166,7 @@
       else if(currentTab==='wallets') html += renderWallets();
       else if(currentTab==='categories') html += renderCategories();
       else if(currentTab==='transactions') html += renderTransactions();
+      else if(currentTab==='analysis') html += renderAnalysis();
       else if(currentTab==='notes') html += renderNotes();
     }
     html += '</main>';
@@ -2937,6 +3079,8 @@
     const fw = document.getElementById('filterWallet');
     const ft = document.getElementById('filterType');
     const fc = document.getElementById('filterCategory');
+    const analysisWalletFilterEl = document.getElementById('analysisWalletFilter');
+    if(analysisWalletFilterEl) analysisWalletFilterEl.onchange = ()=>{ analysisWalletFilter = analysisWalletFilterEl.value; render(); };
     if(fw && ft && fc){
       const applyFilter = ()=>{
         let list = state.transactions.slice();
